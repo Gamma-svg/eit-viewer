@@ -1,0 +1,787 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>EIT Reconstruction Viewer · TFG</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:ital,wght@0,300;0,400;0,600;1,300&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg:       #080c10;
+    --panel:    #0e1318;
+    --border:   #1c2530;
+    --accent:   #00d4ff;
+    --accent2:  #ff6b35;
+    --muted:    #4a6070;
+    --text:     #d0dce8;
+    --text-dim: #6a8090;
+    --mono:     'Space Mono', monospace;
+    --sans:     'DM Sans', sans-serif;
+    --radius:   6px;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  /* ── GRID LAYOUT ─────────────────────────────────────── */
+  .app {
+    display: grid;
+    grid-template-rows: 56px 1fr;
+    grid-template-columns: 280px 1fr;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  /* ── HEADER ──────────────────────────────────────────── */
+  header {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 0 24px;
+    border-bottom: 1px solid var(--border);
+    background: var(--panel);
+    position: relative;
+    z-index: 10;
+  }
+  .logo-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 12px var(--accent);
+    animation: pulse 2.5s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; box-shadow: 0 0 10px var(--accent); }
+    50%       { opacity: .5; box-shadow: 0 0 4px var(--accent); }
+  }
+  header h1 {
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: .08em;
+    color: var(--accent);
+    text-transform: uppercase;
+  }
+  header .subtitle {
+    font-size: 12px;
+    color: var(--text-dim);
+    font-style: italic;
+  }
+  header .badge {
+    margin-left: auto;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: .12em;
+    text-transform: uppercase;
+  }
+
+  /* ── SIDEBAR ─────────────────────────────────────────── */
+  aside {
+    grid-row: 2;
+    overflow-y: auto;
+    border-right: 1px solid var(--border);
+    background: var(--panel);
+    padding: 20px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+  aside::-webkit-scrollbar { width: 4px; }
+  aside::-webkit-scrollbar-track { background: transparent; }
+  aside::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+  .filter-group { display: flex; flex-direction: column; gap: 6px; }
+  .filter-label {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding-bottom: 2px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 2px;
+  }
+
+  .filter-btn {
+    width: 100%;
+    text-align: left;
+    padding: 7px 10px;
+    border: 1px solid transparent;
+    border-radius: var(--radius);
+    background: transparent;
+    color: var(--text-dim);
+    font-family: var(--sans);
+    font-size: 13px;
+    cursor: pointer;
+    transition: all .15s;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .filter-btn:hover  { background: #131c24; color: var(--text); border-color: var(--border); }
+  .filter-btn.active { background: #0b1e2d; color: var(--accent); border-color: #00d4ff44; }
+
+  /* ── MAIN CONTENT ────────────────────────────────────── */
+  main {
+    grid-row: 2;
+    overflow-y: auto;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+  main::-webkit-scrollbar { width: 4px; }
+  main::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+  /* ── FREQ SLIDER BAR ─────────────────────────────────── */
+  .freq-bar {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .freq-bar .label {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: .1em;
+    color: var(--muted);
+    text-transform: uppercase;
+    flex-shrink: 0;
+  }
+  .freq-display {
+    font-family: var(--mono);
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--accent);
+    width: 90px;
+    flex-shrink: 0;
+    text-align: right;
+  }
+  .slider-wrap { flex: 1; position: relative; padding: 4px 0; }
+  input[type=range] {
+    width: 100%;
+    -webkit-appearance: none;
+    height: 2px;
+    background: var(--border);
+    border-radius: 2px;
+    outline: none;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 8px var(--accent);
+    cursor: pointer;
+    transition: transform .1s;
+  }
+  input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.2); }
+  .freq-ticks {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 6px;
+  }
+  .freq-tick {
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--muted);
+    cursor: pointer;
+    padding: 2px 0;
+    transition: color .1s;
+  }
+  .freq-tick:hover  { color: var(--text); }
+  .freq-tick.active { color: var(--accent); }
+
+  /* ── RECONSTRUCTION GRID ─────────────────────────────── */
+  .recon-section { display: flex; flex-direction: column; gap: 16px; }
+  .recon-header {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+  }
+  .recon-title {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+  }
+  .recon-meta {
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  .algo-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+    gap: 14px;
+  }
+
+  .algo-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    transition: border-color .2s, transform .2s;
+    cursor: pointer;
+  }
+  .algo-card:hover {
+    border-color: #00d4ff33;
+    transform: translateY(-2px);
+  }
+  .algo-card.highlight { border-color: var(--accent); }
+
+  .algo-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .algo-name {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .1em;
+    color: var(--accent);
+  }
+  .algo-patron {
+    font-size: 10px;
+    color: var(--text-dim);
+    background: #131c24;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-family: var(--mono);
+  }
+
+  .algo-img-wrap {
+    aspect-ratio: 1;
+    background: #0d0d0d;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .algo-img-wrap img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
+  }
+  .algo-img-wrap .no-img {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+    text-align: center;
+    padding: 16px;
+  }
+  .algo-img-wrap .loading-ring {
+    width: 28px; height: 28px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin .8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── PHANTOM FOTO ────────────────────────────────────── */
+  .phantom-strip {
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+  }
+  .phantom-foto {
+    width: 130px;
+    flex-shrink: 0;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  .phantom-foto-label {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding: 6px 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  .phantom-foto img {
+    width: 100%;
+    height: auto;
+    display: block;
+  }
+  .phantom-info { flex: 1; }
+
+  /* ── DEVICE SELECTOR ─────────────────────────────────── */
+  .device-tabs {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .device-tab {
+    padding: 5px 12px;
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    font-family: var(--mono);
+    font-size: 11px;
+    background: transparent;
+    color: var(--text-dim);
+    cursor: pointer;
+    transition: all .15s;
+    letter-spacing: .05em;
+  }
+  .device-tab:hover  { border-color: var(--accent); color: var(--text); }
+  .device-tab.active { background: #0b1e2d; color: var(--accent); border-color: #00d4ff55; }
+
+  /* ── EMPTY STATE ─────────────────────────────────────── */
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    height: 300px;
+    color: var(--muted);
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: .08em;
+    text-align: center;
+  }
+  .empty-state .icon {
+    font-size: 36px;
+    opacity: .3;
+  }
+
+  /* ── LIGHTBOX ────────────────────────────────────────── */
+  #lightbox {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,.85);
+    backdrop-filter: blur(6px);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 12px;
+  }
+  #lightbox.open { display: flex; }
+  #lightbox img {
+    max-width: 90vw;
+    max-height: 80vh;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+  }
+  #lightbox .lb-info {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-dim);
+    text-align: center;
+  }
+  #lightbox .lb-close {
+    position: fixed; top: 20px; right: 24px;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    font-size: 18px;
+    cursor: pointer;
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    transition: all .15s;
+  }
+  #lightbox .lb-close:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ── SCROLLBAR GLOBAL ────────────────────────────────── */
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- HEADER -->
+  <header>
+    <div class="logo-dot"></div>
+    <div>
+      <h1>EIT Reconstruction Viewer</h1>
+      <div class="subtitle">Electrical Impedance Tomography · TFG Defense</div>
+    </div>
+    <div class="badge" id="status-badge">Loading manifest…</div>
+  </header>
+
+  <!-- SIDEBAR -->
+  <aside>
+    <div class="filter-group">
+      <div class="filter-label">Phantom</div>
+      <div id="filter-phantom"></div>
+    </div>
+    <div class="filter-group">
+      <div class="filter-label">Experiment</div>
+      <div id="filter-exp"></div>
+    </div>
+    <div class="filter-group">
+      <div class="filter-label">Position</div>
+      <div id="filter-pos"></div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main>
+    <!-- FREQUENCY BAR -->
+    <div class="freq-bar" id="freq-bar" style="display:none">
+      <span class="label">Freq</span>
+      <input type="range" id="freq-slider" min="0" max="0" value="0"/>
+      <div class="freq-display" id="freq-display">—</div>
+      <div class="freq-ticks" id="freq-ticks"></div>
+    </div>
+
+    <!-- CONTENT -->
+    <div id="content">
+      <div class="empty-state">
+        <div class="icon">⬡</div>
+        <div>Select a phantom and experiment</div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- LIGHTBOX -->
+<div id="lightbox">
+  <button class="lb-close" onclick="closeLightbox()">✕</button>
+  <img id="lb-img" src="" alt=""/>
+  <div class="lb-info" id="lb-info"></div>
+</div>
+
+<script>
+// ─────────────────────────────────────────────────────────────
+// STATE
+// ─────────────────────────────────────────────────────────────
+let MANIFEST = null;
+let state = {
+  phantom:  null,
+  exp:      null,
+  pos:      null,
+  device:   null,
+  freqIdx:  0,
+};
+
+// ─────────────────────────────────────────────────────────────
+// LOAD MANIFEST
+// ─────────────────────────────────────────────────────────────
+async function loadManifest() {
+  try {
+    const r = await fetch("manifest.json");
+    if (!r.ok) throw new Error("manifest.json not found");
+    MANIFEST = await r.json();
+    document.getElementById("status-badge").textContent =
+      `${countExperiments()} experiments · ${countImages()} reconstructions`;
+    buildPhantomFilter();
+  } catch (e) {
+    document.getElementById("status-badge").textContent = "⚠ manifest.json not found";
+    document.getElementById("content").innerHTML = `
+      <div class="empty-state">
+        <div class="icon">⚠</div>
+        <div>manifest.json not found.<br>Run <code style="color:#00d4ff">generar_imagenes_eit.py</code> first.</div>
+      </div>`;
+  }
+}
+
+function countExperiments() {
+  let n = 0;
+  for (const ph in MANIFEST)
+    for (const ex in MANIFEST[ph])
+      n++;
+  return n;
+}
+function countImages() {
+  let n = 0;
+  function walk(obj) {
+    if (obj && obj.resultados) n += obj.resultados.length;
+    for (const k in obj) if (typeof obj[k] === "object" && k !== "resultados") walk(obj[k]);
+  }
+  walk(MANIFEST);
+  return n;
+}
+
+// ─────────────────────────────────────────────────────────────
+// FILTER BUILDERS
+// ─────────────────────────────────────────────────────────────
+function buildPhantomFilter() {
+  const container = document.getElementById("filter-phantom");
+  container.innerHTML = "";
+  for (const ph of Object.keys(MANIFEST)) {
+    const btn = makeFilterBtn(ph, ph, () => selectPhantom(ph));
+    if (ph === state.phantom) btn.classList.add("active");
+    container.appendChild(btn);
+  }
+}
+
+function buildExpFilter(phantom) {
+  const container = document.getElementById("filter-exp");
+  container.innerHTML = "";
+  for (const ex of Object.keys(MANIFEST[phantom] || {})) {
+    const label = ex.replace(/_/g, " ").replace(/pct/g, "%");
+    const btn = makeFilterBtn(label, ex, () => selectExp(ex));
+    if (ex === state.exp) btn.classList.add("active");
+    container.appendChild(btn);
+  }
+}
+
+function buildPosFilter(phantom, exp) {
+  const container = document.getElementById("filter-pos");
+  container.innerHTML = "";
+  for (const pos of Object.keys((MANIFEST[phantom] || {})[exp] || {})) {
+    const btn = makeFilterBtn(pos, pos, () => selectPos(pos));
+    if (pos === state.pos) btn.classList.add("active");
+    container.appendChild(btn);
+  }
+}
+
+function makeFilterBtn(label, value, onClick) {
+  const btn = document.createElement("button");
+  btn.className = "filter-btn";
+  btn.textContent = label;
+  btn.dataset.value = value;
+  btn.addEventListener("click", onClick);
+  return btn;
+}
+
+function setActive(containerId, value) {
+  document.querySelectorAll(`#${containerId} .filter-btn`).forEach(b => {
+    b.classList.toggle("active", b.dataset.value === value);
+  });
+}
+
+// ─────────────────────────────────────────────────────────────
+// SELECTION HANDLERS
+// ─────────────────────────────────────────────────────────────
+function selectPhantom(ph) {
+  state.phantom = ph; state.exp = null; state.pos = null;
+  state.device = null; state.freqIdx = 0;
+  setActive("filter-phantom", ph);
+  buildExpFilter(ph);
+  document.getElementById("filter-pos").innerHTML = "";
+  renderContent();
+}
+
+function selectExp(ex) {
+  state.exp = ex; state.pos = null; state.device = null; state.freqIdx = 0;
+  setActive("filter-exp", ex);
+  buildPosFilter(state.phantom, ex);
+  // Auto-select first position
+  const positions = Object.keys((MANIFEST[state.phantom] || {})[ex] || {});
+  if (positions.length === 1) selectPos(positions[0]);
+  else renderContent();
+}
+
+function selectPos(pos) {
+  state.pos = pos; state.device = null; state.freqIdx = 0;
+  setActive("filter-pos", pos);
+  renderContent();
+}
+
+function selectDevice(dev) {
+  state.device = dev; state.freqIdx = 0;
+  renderContent();
+}
+
+// ─────────────────────────────────────────────────────────────
+// RENDER
+// ─────────────────────────────────────────────────────────────
+function renderContent() {
+  const content = document.getElementById("content");
+
+  if (!state.phantom || !state.exp || !state.pos) {
+    content.innerHTML = `<div class="empty-state"><div class="icon">⬡</div><div>Select a phantom, experiment and position</div></div>`;
+    document.getElementById("freq-bar").style.display = "none";
+    return;
+  }
+
+  const posData = ((MANIFEST[state.phantom] || {})[state.exp] || {})[state.pos] || {};
+  const devices = Object.keys(posData).filter(k => k !== "foto" && k !== "resultados");
+
+  if (devices.length === 0) {
+    content.innerHTML = `<div class="empty-state"><div class="icon">⬡</div><div>No data available for this selection</div></div>`;
+    return;
+  }
+
+  // Auto-select device if needed
+  if (!state.device || !devices.includes(state.device)) state.device = devices[0];
+
+  const devData = posData[state.device] || {};
+  const results = devData.resultados || [];
+  const foto = posData.foto || (devData && devData.foto) || null;
+
+  // Collect frequencies
+  const freqs = [...new Set(results.map(r => r.freq_hz))].sort((a, b) => a - b);
+  if (freqs.length === 0) {
+    content.innerHTML = `<div class="empty-state"><div class="icon">⬡</div><div>No reconstructions found</div></div>`;
+    document.getElementById("freq-bar").style.display = "none";
+    return;
+  }
+
+  // Clamp freq index
+  if (state.freqIdx >= freqs.length) state.freqIdx = 0;
+  const selFreq = freqs[state.freqIdx];
+
+  // Build freq bar
+  buildFreqBar(freqs);
+
+  // Filter results for selected freq
+  const atFreq = results.filter(r => r.freq_hz === selFreq);
+
+  // Group by patron → algorithm
+  const byPatron = {};
+  for (const r of atFreq) {
+    if (!byPatron[r.patron]) byPatron[r.patron] = {};
+    byPatron[r.patron][r.metodo] = r;
+  }
+
+  // Build HTML
+  let html = `
+    <div class="phantom-strip">
+      ${foto ? `
+      <div class="phantom-foto">
+        <div class="phantom-foto-label">Phantom</div>
+        <img src="${foto}" alt="phantom" loading="lazy"/>
+      </div>` : ""}
+      <div class="phantom-info">
+        <div style="margin-bottom:10px">
+          <div style="font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px">Device</div>
+          <div class="device-tabs">
+            ${devices.map(d => `<button class="device-tab ${d === state.device ? "active" : ""}" onclick="selectDevice('${d}')">${d}</button>`).join("")}
+          </div>
+        </div>
+        <div style="font-size:12px;color:var(--text-dim);line-height:1.8">
+          <span style="color:var(--text)">${state.phantom}</span> ·
+          <span style="color:var(--text)">${state.exp.replace(/_/g," ")}</span> ·
+          <span style="color:var(--text)">${state.pos}</span> ·
+          <span style="color:var(--accent)">${state.device}</span>
+        </div>
+      </div>
+    </div>
+  `;
+
+  const ALGO_COLORS = { SVD: "#00d4ff", JAC: "#ff6b35", GREIT: "#a78bfa", BP: "#34d399" };
+
+  for (const [patron, algos] of Object.entries(byPatron)) {
+    const algoList = Object.entries(algos);
+    html += `
+      <div class="recon-section">
+        <div class="recon-header">
+          <span class="recon-title">Pattern: ${patron}</span>
+          <span class="recon-meta">${algoList.length} algorithm${algoList.length > 1 ? "s" : ""}</span>
+        </div>
+        <div class="algo-grid">
+          ${algoList.map(([algoName, r]) => `
+            <div class="algo-card" onclick="openLightbox('${r.img}','${algoName} · ${patron} · ${r.freq_label} · ${state.device}')">
+              <div class="algo-card-header">
+                <span class="algo-name" style="color:${ALGO_COLORS[algoName] || 'var(--accent)'}">${algoName}</span>
+                <span class="algo-patron">${patron}</span>
+              </div>
+              <div class="algo-img-wrap">
+                <img src="${r.img}" alt="${algoName}" loading="lazy"
+                     onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"
+                />
+                <div class="no-img" style="display:none;width:100%;height:100%;flex-direction:column;align-items:center;justify-content:center;gap:6px">
+                  <div style="font-size:20px;opacity:.3">⬡</div>
+                  <div>Image not found</div>
+                  <div style="font-size:9px;word-break:break-all;opacity:.5">${r.img}</div>
+                </div>
+              </div>
+            </div>
+          `).join("")}
+        </div>
+      </div>
+    `;
+  }
+
+  content.innerHTML = html;
+}
+
+// ─────────────────────────────────────────────────────────────
+// FREQUENCY BAR
+// ─────────────────────────────────────────────────────────────
+function buildFreqBar(freqs) {
+  const bar    = document.getElementById("freq-bar");
+  const slider = document.getElementById("freq-slider");
+  const disp   = document.getElementById("freq-display");
+  const ticks  = document.getElementById("freq-ticks");
+
+  bar.style.display = "flex";
+  slider.max   = freqs.length - 1;
+  slider.value = state.freqIdx;
+  disp.textContent = fmtFreq(freqs[state.freqIdx]);
+
+  // Ticks
+  ticks.innerHTML = freqs.map((f, i) => `
+    <span class="freq-tick ${i === state.freqIdx ? "active" : ""}"
+          onclick="setFreqIdx(${i})">${fmtFreqShort(f)}</span>
+  `).join("");
+
+  slider.oninput = (e) => {
+    state.freqIdx = parseInt(e.target.value);
+    renderContent();
+  };
+}
+
+function setFreqIdx(i) {
+  state.freqIdx = i;
+  renderContent();
+}
+
+function fmtFreq(hz) {
+  if (hz >= 1e6) return `${(hz/1e6).toFixed(2)} MHz`;
+  if (hz >= 1e3) return `${(hz/1e3).toFixed(1)} kHz`;
+  return `${hz.toFixed(0)} Hz`;
+}
+function fmtFreqShort(hz) {
+  if (hz >= 1e6) return `${(hz/1e6).toFixed(1)}M`;
+  if (hz >= 1e3) return `${(hz/1e3).toFixed(0)}k`;
+  return `${hz.toFixed(0)}`;
+}
+
+// ─────────────────────────────────────────────────────────────
+// LIGHTBOX
+// ─────────────────────────────────────────────────────────────
+function openLightbox(src, info) {
+  document.getElementById("lb-img").src = src;
+  document.getElementById("lb-info").textContent = info;
+  document.getElementById("lightbox").classList.add("open");
+}
+function closeLightbox() {
+  document.getElementById("lightbox").classList.remove("open");
+}
+document.getElementById("lightbox").addEventListener("click", e => {
+  if (e.target === e.currentTarget) closeLightbox();
+});
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape") closeLightbox();
+});
+
+// ─────────────────────────────────────────────────────────────
+// INIT
+// ─────────────────────────────────────────────────────────────
+loadManifest();
+</script>
+</body>
+</html>
