@@ -32,11 +32,11 @@
     line-height: 1.5;
   }
 
-  /* ── GRID LAYOUT ─────────────────────────────────────── */
+  /* ── DESKTOP LAYOUT ─────────────────────────────────── */
   .app {
     display: grid;
     grid-template-rows: 56px 1fr;
-    grid-template-columns: 280px 1fr;
+    grid-template-columns: 260px 1fr;
     height: 100vh;
     overflow: hidden;
   }
@@ -46,12 +46,12 @@
     grid-column: 1 / -1;
     display: flex;
     align-items: center;
-    gap: 16px;
-    padding: 0 24px;
+    gap: 12px;
+    padding: 0 16px;
     border-bottom: 1px solid var(--border);
     background: var(--panel);
     position: relative;
-    z-index: 10;
+    z-index: 100;
   }
   .logo-dot {
     width: 10px; height: 10px;
@@ -59,6 +59,7 @@
     background: var(--accent);
     box-shadow: 0 0 12px var(--accent);
     animation: pulse 2.5s ease-in-out infinite;
+    flex-shrink: 0;
   }
   @keyframes pulse {
     0%, 100% { opacity: 1; box-shadow: 0 0 10px var(--accent); }
@@ -66,24 +67,43 @@
   }
   header h1 {
     font-family: var(--mono);
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 700;
     letter-spacing: .08em;
     color: var(--accent);
     text-transform: uppercase;
   }
   header .subtitle {
-    font-size: 12px;
+    font-size: 11px;
     color: var(--text-dim);
     font-style: italic;
+    display: none;
+  }
+  @media (min-width: 600px) {
+    header .subtitle { display: block; }
   }
   header .badge {
     margin-left: auto;
     font-family: var(--mono);
     font-size: 10px;
     color: var(--muted);
-    letter-spacing: .12em;
+    letter-spacing: .1em;
     text-transform: uppercase;
+    text-align: right;
+  }
+
+  /* Burger button (mobile only) */
+  .burger {
+    display: none;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    border-radius: var(--radius);
+    padding: 4px 8px;
+    cursor: pointer;
+    font-size: 16px;
+    margin-left: 8px;
+    flex-shrink: 0;
   }
 
   /* ── SIDEBAR ─────────────────────────────────────────── */
@@ -92,16 +112,15 @@
     overflow-y: auto;
     border-right: 1px solid var(--border);
     background: var(--panel);
-    padding: 20px 16px;
+    padding: 16px 12px;
     display: flex;
     flex-direction: column;
-    gap: 20px;
+    gap: 16px;
   }
   aside::-webkit-scrollbar { width: 4px; }
-  aside::-webkit-scrollbar-track { background: transparent; }
   aside::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
 
-  .filter-group { display: flex; flex-direction: column; gap: 6px; }
+  .filter-group { display: flex; flex-direction: column; gap: 5px; }
   .filter-label {
     font-family: var(--mono);
     font-size: 9px;
@@ -116,7 +135,7 @@
   .filter-btn {
     width: 100%;
     text-align: left;
-    padding: 7px 10px;
+    padding: 6px 8px;
     border: 1px solid transparent;
     border-radius: var(--radius);
     background: transparent;
@@ -136,10 +155,10 @@
   main {
     grid-row: 2;
     overflow-y: auto;
-    padding: 24px;
+    padding: 16px;
     display: flex;
     flex-direction: column;
-    gap: 24px;
+    gap: 16px;
   }
   main::-webkit-scrollbar { width: 4px; }
   main::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
@@ -149,10 +168,11 @@
     background: var(--panel);
     border: 1px solid var(--border);
     border-radius: var(--radius);
-    padding: 14px 18px;
+    padding: 10px 14px;
     display: flex;
     align-items: center;
-    gap: 16px;
+    gap: 10px;
+    flex-wrap: wrap;
   }
   .freq-bar .label {
     font-family: var(--mono);
@@ -164,14 +184,14 @@
   }
   .freq-display {
     font-family: var(--mono);
-    font-size: 16px;
+    font-size: 15px;
     font-weight: 700;
     color: var(--accent);
-    width: 90px;
+    width: 80px;
     flex-shrink: 0;
     text-align: right;
   }
-  .slider-wrap { flex: 1; position: relative; padding: 4px 0; }
+  .slider-wrap { flex: 1; min-width: 100px; }
   input[type=range] {
     width: 100%;
     -webkit-appearance: none;
@@ -182,18 +202,17 @@
   }
   input[type=range]::-webkit-slider-thumb {
     -webkit-appearance: none;
-    width: 16px; height: 16px;
+    width: 18px; height: 18px;
     border-radius: 50%;
     background: var(--accent);
     box-shadow: 0 0 8px var(--accent);
     cursor: pointer;
-    transition: transform .1s;
   }
-  input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.2); }
   .freq-ticks {
+    width: 100%;
     display: flex;
     justify-content: space-between;
-    margin-top: 6px;
+    margin-top: 4px;
   }
   .freq-tick {
     font-family: var(--mono);
@@ -201,34 +220,31 @@
     color: var(--muted);
     cursor: pointer;
     padding: 2px 0;
-    transition: color .1s;
   }
-  .freq-tick:hover  { color: var(--text); }
   .freq-tick.active { color: var(--accent); }
 
   /* ── RECONSTRUCTION GRID ─────────────────────────────── */
-  .recon-section { display: flex; flex-direction: column; gap: 16px; }
-  .recon-header {
-    display: flex;
-    align-items: baseline;
-    gap: 10px;
-  }
+  .recon-section { display: flex; flex-direction: column; gap: 10px; }
+  .recon-header { display: flex; align-items: baseline; gap: 8px; }
   .recon-title {
     font-family: var(--mono);
-    font-size: 11px;
+    font-size: 10px;
     letter-spacing: .1em;
     text-transform: uppercase;
     color: var(--text-dim);
   }
-  .recon-meta {
-    font-size: 11px;
-    color: var(--muted);
-  }
+  .recon-meta { font-size: 11px; color: var(--muted); }
 
   .algo-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
-    gap: 14px;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+  @media (min-width: 900px) {
+    .algo-grid { grid-template-columns: repeat(4, 1fr); }
+  }
+  @media (min-width: 600px) and (max-width: 899px) {
+    .algo-grid { grid-template-columns: repeat(2, 1fr); }
   }
 
   .algo-card {
@@ -236,34 +252,30 @@
     border: 1px solid var(--border);
     border-radius: var(--radius);
     overflow: hidden;
-    transition: border-color .2s, transform .2s;
     cursor: pointer;
+    transition: border-color .2s;
   }
-  .algo-card:hover {
-    border-color: #00d4ff33;
-    transform: translateY(-2px);
-  }
-  .algo-card.highlight { border-color: var(--accent); }
+  .algo-card:active { border-color: var(--accent); }
 
   .algo-card-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 8px 12px;
+    padding: 6px 8px;
     border-bottom: 1px solid var(--border);
   }
   .algo-name {
     font-family: var(--mono);
     font-size: 11px;
     font-weight: 700;
-    letter-spacing: .1em;
+    letter-spacing: .08em;
     color: var(--accent);
   }
   .algo-patron {
-    font-size: 10px;
+    font-size: 9px;
     color: var(--text-dim);
     background: #131c24;
-    padding: 2px 6px;
+    padding: 2px 5px;
     border-radius: 3px;
     font-family: var(--mono);
   }
@@ -274,7 +286,6 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    position: relative;
     overflow: hidden;
   }
   .algo-img-wrap img {
@@ -285,28 +296,20 @@
   }
   .algo-img-wrap .no-img {
     font-family: var(--mono);
-    font-size: 10px;
+    font-size: 9px;
     color: var(--muted);
     text-align: center;
-    padding: 16px;
+    padding: 12px;
   }
-  .algo-img-wrap .loading-ring {
-    width: 28px; height: 28px;
-    border: 2px solid var(--border);
-    border-top-color: var(--accent);
-    border-radius: 50%;
-    animation: spin .8s linear infinite;
-  }
-  @keyframes spin { to { transform: rotate(360deg); } }
 
   /* ── PHANTOM FOTO ────────────────────────────────────── */
   .phantom-strip {
     display: flex;
-    gap: 14px;
+    gap: 12px;
     align-items: flex-start;
   }
   .phantom-foto {
-    width: 130px;
+    width: 100px;
     flex-shrink: 0;
     background: var(--panel);
     border: 1px solid var(--border);
@@ -316,39 +319,37 @@
   .phantom-foto-label {
     font-family: var(--mono);
     font-size: 9px;
-    letter-spacing: .12em;
+    letter-spacing: .1em;
     text-transform: uppercase;
     color: var(--muted);
-    padding: 6px 8px;
+    padding: 5px 7px;
     border-bottom: 1px solid var(--border);
   }
-  .phantom-foto img {
-    width: 100%;
-    height: auto;
-    display: block;
-  }
+  .phantom-foto img { width: 100%; height: auto; display: block; }
   .phantom-info { flex: 1; }
 
   /* ── DEVICE SELECTOR ─────────────────────────────────── */
   .device-tabs {
     display: flex;
-    gap: 6px;
+    gap: 5px;
     flex-wrap: wrap;
   }
   .device-tab {
-    padding: 5px 12px;
+    padding: 4px 10px;
     border: 1px solid var(--border);
     border-radius: 20px;
     font-family: var(--mono);
-    font-size: 11px;
+    font-size: 10px;
     background: transparent;
     color: var(--text-dim);
     cursor: pointer;
     transition: all .15s;
-    letter-spacing: .05em;
   }
-  .device-tab:hover  { border-color: var(--accent); color: var(--text); }
-  .device-tab.active { background: #0b1e2d; color: var(--accent); border-color: #00d4ff55; }
+  .device-tab:active, .device-tab.active {
+    background: #0b1e2d;
+    color: var(--accent);
+    border-color: #00d4ff55;
+  }
 
   /* ── EMPTY STATE ─────────────────────────────────────── */
   .empty-state {
@@ -356,46 +357,43 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 12px;
-    height: 300px;
+    gap: 10px;
+    height: 200px;
     color: var(--muted);
     font-family: var(--mono);
-    font-size: 12px;
-    letter-spacing: .08em;
+    font-size: 11px;
     text-align: center;
   }
-  .empty-state .icon {
-    font-size: 36px;
-    opacity: .3;
-  }
+  .empty-state .icon { font-size: 30px; opacity: .3; }
 
   /* ── LIGHTBOX ────────────────────────────────────────── */
   #lightbox {
     display: none;
     position: fixed; inset: 0;
-    background: rgba(0,0,0,.85);
+    background: rgba(0,0,0,.9);
     backdrop-filter: blur(6px);
     z-index: 1000;
     align-items: center;
     justify-content: center;
     flex-direction: column;
-    gap: 12px;
+    gap: 10px;
+    padding: 20px;
   }
   #lightbox.open { display: flex; }
   #lightbox img {
-    max-width: 90vw;
+    max-width: 100%;
     max-height: 80vh;
     border-radius: var(--radius);
     border: 1px solid var(--border);
   }
   #lightbox .lb-info {
     font-family: var(--mono);
-    font-size: 11px;
+    font-size: 10px;
     color: var(--text-dim);
     text-align: center;
   }
   #lightbox .lb-close {
-    position: fixed; top: 20px; right: 24px;
+    position: fixed; top: 16px; right: 16px;
     background: transparent;
     border: 1px solid var(--border);
     color: var(--text-dim);
@@ -404,13 +402,69 @@
     width: 36px; height: 36px;
     border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
-    transition: all .15s;
   }
-  #lightbox .lb-close:hover { border-color: var(--accent); color: var(--accent); }
 
-  /* ── SCROLLBAR GLOBAL ────────────────────────────────── */
-  ::-webkit-scrollbar { width: 5px; }
-  ::-webkit-scrollbar-track { background: transparent; }
+  /* ── MOBILE LAYOUT ───────────────────────────────────── */
+  @media (max-width: 700px) {
+    .app {
+      grid-template-rows: 50px auto 1fr;
+      grid-template-columns: 1fr;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    header { grid-column: 1; padding: 0 12px; }
+    .burger { display: flex; align-items: center; justify-content: center; }
+
+    aside {
+      grid-row: 2;
+      grid-column: 1;
+      border-right: none;
+      border-bottom: 1px solid var(--border);
+      padding: 10px 12px;
+      gap: 10px;
+      max-height: 0;
+      overflow: hidden;
+      padding-top: 0;
+      padding-bottom: 0;
+      transition: max-height .3s ease, padding .3s ease;
+    }
+    aside.open {
+      max-height: 300px;
+      padding: 10px 12px;
+      overflow-y: auto;
+    }
+
+    /* Filters horizontal on mobile */
+    .filter-group {
+      flex-direction: column;
+      gap: 4px;
+    }
+    .filters-row {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .filter-group { flex: 1; min-width: 80px; }
+
+    .filter-btn {
+      padding: 5px 7px;
+      font-size: 12px;
+    }
+
+    main {
+      grid-row: 3;
+      grid-column: 1;
+      padding: 10px;
+      gap: 10px;
+    }
+
+    .algo-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+
+    .phantom-foto { width: 80px; }
+  }
+
+  ::-webkit-scrollbar { width: 4px; }
   ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 </style>
 </head>
@@ -425,36 +479,39 @@
       <h1>EIT Reconstruction Viewer</h1>
       <div class="subtitle">Electrical Impedance Tomography · TFG Defense</div>
     </div>
-    <div class="badge" id="status-badge">Loading manifest…</div>
+    <div class="badge" id="status-badge">Loading…</div>
+    <button class="burger" id="burger-btn" onclick="toggleSidebar()">☰</button>
   </header>
 
   <!-- SIDEBAR -->
-  <aside>
-    <div class="filter-group">
-      <div class="filter-label">Phantom</div>
-      <div id="filter-phantom"></div>
-    </div>
-    <div class="filter-group">
-      <div class="filter-label">Experiment</div>
-      <div id="filter-exp"></div>
-    </div>
-    <div class="filter-group">
-      <div class="filter-label">Position</div>
-      <div id="filter-pos"></div>
+  <aside id="sidebar">
+    <div class="filters-row">
+      <div class="filter-group">
+        <div class="filter-label">Phantom</div>
+        <div id="filter-phantom"></div>
+      </div>
+      <div class="filter-group">
+        <div class="filter-label">Experiment</div>
+        <div id="filter-exp"></div>
+      </div>
+      <div class="filter-group">
+        <div class="filter-label">Position</div>
+        <div id="filter-pos"></div>
+      </div>
     </div>
   </aside>
 
   <!-- MAIN -->
   <main>
-    <!-- FREQUENCY BAR -->
     <div class="freq-bar" id="freq-bar" style="display:none">
       <span class="label">Freq</span>
-      <input type="range" id="freq-slider" min="0" max="0" value="0"/>
+      <div class="slider-wrap">
+        <input type="range" id="freq-slider" min="0" max="0" value="0"/>
+        <div class="freq-ticks" id="freq-ticks"></div>
+      </div>
       <div class="freq-display" id="freq-display">—</div>
-      <div class="freq-ticks" id="freq-ticks"></div>
     </div>
 
-    <!-- CONTENT -->
     <div id="content">
       <div class="empty-state">
         <div class="icon">⬡</div>
@@ -472,46 +529,34 @@
 </div>
 
 <script>
-// ─────────────────────────────────────────────────────────────
-// STATE
-// ─────────────────────────────────────────────────────────────
 let MANIFEST = null;
-let state = {
-  phantom:  null,
-  exp:      null,
-  pos:      null,
-  device:   null,
-  freqIdx:  0,
-};
+let state = { phantom: null, exp: null, pos: null, device: null, freqIdx: 0 };
 
-// ─────────────────────────────────────────────────────────────
-// LOAD MANIFEST
-// ─────────────────────────────────────────────────────────────
-async function loadManifest() {
-  try {
-    const r = await fetch("manifest.json");
-    if (!r.ok) throw new Error("manifest.json not found");
-    MANIFEST = await r.json();
-    document.getElementById("status-badge").textContent =
-      `${countExperiments()} experiments · ${countImages()} reconstructions`;
-    buildPhantomFilter();
-  } catch (e) {
-    document.getElementById("status-badge").textContent = "⚠ manifest.json not found";
-    document.getElementById("content").innerHTML = `
-      <div class="empty-state">
-        <div class="icon">⚠</div>
-        <div>manifest.json not found.<br>Run <code style="color:#00d4ff">generar_imagenes_eit.py</code> first.</div>
-      </div>`;
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('open');
+}
+
+function closeSidebarOnMobile() {
+  if (window.innerWidth <= 700) {
+    document.getElementById('sidebar').classList.remove('open');
   }
 }
 
-function countExperiments() {
-  let n = 0;
-  for (const ph in MANIFEST)
-    for (const ex in MANIFEST[ph])
-      n++;
-  return n;
+async function loadManifest() {
+  try {
+    const r = await fetch("manifest.json");
+    if (!r.ok) throw new Error("not found");
+    MANIFEST = await r.json();
+    const nExp = Object.values(MANIFEST).reduce((a, ph) => a + Object.keys(ph).length, 0);
+    const nImgs = countImages();
+    document.getElementById("status-badge").textContent = `${nExp} exp · ${nImgs} imgs`;
+    buildPhantomFilter();
+  } catch(e) {
+    document.getElementById("status-badge").textContent = "⚠ manifest.json not found";
+    document.getElementById("content").innerHTML = `<div class="empty-state"><div class="icon">⚠</div><div>Run generar_imagenes_eit.py first</div></div>`;
+  }
 }
+
 function countImages() {
   let n = 0;
   function walk(obj) {
@@ -522,41 +567,38 @@ function countImages() {
   return n;
 }
 
-// ─────────────────────────────────────────────────────────────
-// FILTER BUILDERS
-// ─────────────────────────────────────────────────────────────
 function buildPhantomFilter() {
-  const container = document.getElementById("filter-phantom");
-  container.innerHTML = "";
+  const c = document.getElementById("filter-phantom");
+  c.innerHTML = "";
   for (const ph of Object.keys(MANIFEST)) {
-    const btn = makeFilterBtn(ph, ph, () => selectPhantom(ph));
+    const btn = makeBtn(ph, ph, () => { selectPhantom(ph); closeSidebarOnMobile(); });
     if (ph === state.phantom) btn.classList.add("active");
-    container.appendChild(btn);
+    c.appendChild(btn);
   }
 }
 
 function buildExpFilter(phantom) {
-  const container = document.getElementById("filter-exp");
-  container.innerHTML = "";
+  const c = document.getElementById("filter-exp");
+  c.innerHTML = "";
   for (const ex of Object.keys(MANIFEST[phantom] || {})) {
-    const label = ex.replace(/_/g, " ").replace(/pct/g, "%");
-    const btn = makeFilterBtn(label, ex, () => selectExp(ex));
+    const label = ex.replace(/_/g," ");
+    const btn = makeBtn(label, ex, () => { selectExp(ex); closeSidebarOnMobile(); });
     if (ex === state.exp) btn.classList.add("active");
-    container.appendChild(btn);
+    c.appendChild(btn);
   }
 }
 
 function buildPosFilter(phantom, exp) {
-  const container = document.getElementById("filter-pos");
-  container.innerHTML = "";
-  for (const pos of Object.keys((MANIFEST[phantom] || {})[exp] || {})) {
-    const btn = makeFilterBtn(pos, pos, () => selectPos(pos));
+  const c = document.getElementById("filter-pos");
+  c.innerHTML = "";
+  for (const pos of Object.keys((MANIFEST[phantom]||{})[exp]||{})) {
+    const btn = makeBtn(pos, pos, () => { selectPos(pos); closeSidebarOnMobile(); });
     if (pos === state.pos) btn.classList.add("active");
-    container.appendChild(btn);
+    c.appendChild(btn);
   }
 }
 
-function makeFilterBtn(label, value, onClick) {
+function makeBtn(label, value, onClick) {
   const btn = document.createElement("button");
   btn.className = "filter-btn";
   btn.textContent = label;
@@ -565,18 +607,14 @@ function makeFilterBtn(label, value, onClick) {
   return btn;
 }
 
-function setActive(containerId, value) {
-  document.querySelectorAll(`#${containerId} .filter-btn`).forEach(b => {
+function setActive(id, value) {
+  document.querySelectorAll(`#${id} .filter-btn`).forEach(b => {
     b.classList.toggle("active", b.dataset.value === value);
   });
 }
 
-// ─────────────────────────────────────────────────────────────
-// SELECTION HANDLERS
-// ─────────────────────────────────────────────────────────────
 function selectPhantom(ph) {
-  state.phantom = ph; state.exp = null; state.pos = null;
-  state.device = null; state.freqIdx = 0;
+  state = { phantom: ph, exp: null, pos: null, device: null, freqIdx: 0 };
   setActive("filter-phantom", ph);
   buildExpFilter(ph);
   document.getElementById("filter-pos").innerHTML = "";
@@ -587,8 +625,7 @@ function selectExp(ex) {
   state.exp = ex; state.pos = null; state.device = null; state.freqIdx = 0;
   setActive("filter-exp", ex);
   buildPosFilter(state.phantom, ex);
-  // Auto-select first position
-  const positions = Object.keys((MANIFEST[state.phantom] || {})[ex] || {});
+  const positions = Object.keys((MANIFEST[state.phantom]||{})[ex]||{});
   if (positions.length === 1) selectPos(positions[0]);
   else renderContent();
 }
@@ -604,150 +641,110 @@ function selectDevice(dev) {
   renderContent();
 }
 
-// ─────────────────────────────────────────────────────────────
-// RENDER
-// ─────────────────────────────────────────────────────────────
 function renderContent() {
   const content = document.getElementById("content");
-
   if (!state.phantom || !state.exp || !state.pos) {
-    content.innerHTML = `<div class="empty-state"><div class="icon">⬡</div><div>Select a phantom, experiment and position</div></div>`;
+    content.innerHTML = `<div class="empty-state"><div class="icon">⬡</div><div>Select phantom, experiment and position</div></div>`;
     document.getElementById("freq-bar").style.display = "none";
     return;
   }
 
-  const posData = ((MANIFEST[state.phantom] || {})[state.exp] || {})[state.pos] || {};
+  const posData = ((MANIFEST[state.phantom]||{})[state.exp]||{})[state.pos]||{};
   const devices = Object.keys(posData).filter(k => k !== "foto" && k !== "resultados");
 
-  if (devices.length === 0) {
-    content.innerHTML = `<div class="empty-state"><div class="icon">⬡</div><div>No data available for this selection</div></div>`;
+  if (!devices.length) {
+    content.innerHTML = `<div class="empty-state"><div class="icon">⬡</div><div>No data available</div></div>`;
     return;
   }
 
-  // Auto-select device if needed
   if (!state.device || !devices.includes(state.device)) state.device = devices[0];
 
   const devData = posData[state.device] || {};
   const results = devData.resultados || [];
-  const foto = posData.foto || (devData && devData.foto) || null;
+  const foto = posData.foto || devData.foto || null;
 
-  // Collect frequencies
-  const freqs = [...new Set(results.map(r => r.freq_hz))].sort((a, b) => a - b);
-  if (freqs.length === 0) {
+  const freqs = [...new Set(results.map(r => r.freq_hz))].sort((a,b) => a-b);
+  if (!freqs.length) {
     content.innerHTML = `<div class="empty-state"><div class="icon">⬡</div><div>No reconstructions found</div></div>`;
     document.getElementById("freq-bar").style.display = "none";
     return;
   }
 
-  // Clamp freq index
   if (state.freqIdx >= freqs.length) state.freqIdx = 0;
   const selFreq = freqs[state.freqIdx];
-
-  // Build freq bar
   buildFreqBar(freqs);
 
-  // Filter results for selected freq
   const atFreq = results.filter(r => r.freq_hz === selFreq);
-
-  // Group by patron → algorithm
   const byPatron = {};
   for (const r of atFreq) {
     if (!byPatron[r.patron]) byPatron[r.patron] = {};
     byPatron[r.patron][r.metodo] = r;
   }
 
-  // Build HTML
-  let html = `
-    <div class="phantom-strip">
-      ${foto ? `
-      <div class="phantom-foto">
-        <div class="phantom-foto-label">Phantom</div>
-        <img src="${foto}" alt="phantom" loading="lazy"/>
-      </div>` : ""}
-      <div class="phantom-info">
-        <div style="margin-bottom:10px">
-          <div style="font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px">Device</div>
-          <div class="device-tabs">
-            ${devices.map(d => `<button class="device-tab ${d === state.device ? "active" : ""}" onclick="selectDevice('${d}')">${d}</button>`).join("")}
-          </div>
+  const COLORS = { SVD: "#00d4ff", JAC: "#ff6b35", GREIT: "#a78bfa", BP: "#34d399" };
+
+  let html = `<div class="phantom-strip">
+    ${foto ? `<div class="phantom-foto"><div class="phantom-foto-label">Phantom</div><img src="${foto}" loading="lazy"/></div>` : ""}
+    <div class="phantom-info">
+      <div style="margin-bottom:8px">
+        <div style="font-family:var(--mono);font-size:9px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;margin-bottom:5px">Device</div>
+        <div class="device-tabs">
+          ${devices.map(d => `<button class="device-tab ${d===state.device?"active":""}" onclick="selectDevice('${d}')">${d}</button>`).join("")}
         </div>
-        <div style="font-size:12px;color:var(--text-dim);line-height:1.8">
-          <span style="color:var(--text)">${state.phantom}</span> ·
-          <span style="color:var(--text)">${state.exp.replace(/_/g," ")}</span> ·
-          <span style="color:var(--text)">${state.pos}</span> ·
-          <span style="color:var(--accent)">${state.device}</span>
-        </div>
+      </div>
+      <div style="font-size:11px;color:var(--text-dim);line-height:1.8">
+        <span style="color:var(--text)">${state.phantom}</span> · <span style="color:var(--text)">${state.exp.replace(/_/g," ")}</span> · <span style="color:var(--text)">${state.pos}</span> · <span style="color:var(--accent)">${state.device}</span>
       </div>
     </div>
-  `;
-
-  const ALGO_COLORS = { SVD: "#00d4ff", JAC: "#ff6b35", GREIT: "#a78bfa", BP: "#34d399" };
+  </div>`;
 
   for (const [patron, algos] of Object.entries(byPatron)) {
-    const algoList = Object.entries(algos);
-    html += `
-      <div class="recon-section">
-        <div class="recon-header">
-          <span class="recon-title">Pattern: ${patron}</span>
-          <span class="recon-meta">${algoList.length} algorithm${algoList.length > 1 ? "s" : ""}</span>
-        </div>
-        <div class="algo-grid">
-          ${algoList.map(([algoName, r]) => `
-            <div class="algo-card" onclick="openLightbox('${r.img}','${algoName} · ${patron} · ${r.freq_label} · ${state.device}')">
-              <div class="algo-card-header">
-                <span class="algo-name" style="color:${ALGO_COLORS[algoName] || 'var(--accent)'}">${algoName}</span>
-                <span class="algo-patron">${patron}</span>
-              </div>
-              <div class="algo-img-wrap">
-                <img src="${r.img}" alt="${algoName}" loading="lazy"
-                     onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"
-                />
-                <div class="no-img" style="display:none;width:100%;height:100%;flex-direction:column;align-items:center;justify-content:center;gap:6px">
-                  <div style="font-size:20px;opacity:.3">⬡</div>
-                  <div>Image not found</div>
-                  <div style="font-size:9px;word-break:break-all;opacity:.5">${r.img}</div>
-                </div>
+    const list = Object.entries(algos);
+    html += `<div class="recon-section">
+      <div class="recon-header">
+        <span class="recon-title">Pattern: ${patron}</span>
+        <span class="recon-meta">${list.length} algo${list.length>1?"s":""}</span>
+      </div>
+      <div class="algo-grid">
+        ${list.map(([name, r]) => `
+          <div class="algo-card" onclick="openLightbox('${r.img}','${name} · ${patron} · ${r.freq_label} · ${state.device}')">
+            <div class="algo-card-header">
+              <span class="algo-name" style="color:${COLORS[name]||'var(--accent)'}">${name}</span>
+              <span class="algo-patron">${patron}</span>
+            </div>
+            <div class="algo-img-wrap">
+              <img src="${r.img}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"/>
+              <div class="no-img" style="display:none;width:100%;height:100%;flex-direction:column;align-items:center;justify-content:center">
+                <div style="font-size:18px;opacity:.3">⬡</div><div>${name}</div>
               </div>
             </div>
-          `).join("")}
-        </div>
+          </div>`).join("")}
       </div>
-    `;
+    </div>`;
   }
 
   content.innerHTML = html;
 }
 
-// ─────────────────────────────────────────────────────────────
-// FREQUENCY BAR
-// ─────────────────────────────────────────────────────────────
 function buildFreqBar(freqs) {
-  const bar    = document.getElementById("freq-bar");
+  const bar = document.getElementById("freq-bar");
   const slider = document.getElementById("freq-slider");
-  const disp   = document.getElementById("freq-display");
-  const ticks  = document.getElementById("freq-ticks");
+  const disp = document.getElementById("freq-display");
+  const ticks = document.getElementById("freq-ticks");
 
   bar.style.display = "flex";
-  slider.max   = freqs.length - 1;
+  slider.max = freqs.length - 1;
   slider.value = state.freqIdx;
   disp.textContent = fmtFreq(freqs[state.freqIdx]);
 
-  // Ticks
-  ticks.innerHTML = freqs.map((f, i) => `
-    <span class="freq-tick ${i === state.freqIdx ? "active" : ""}"
-          onclick="setFreqIdx(${i})">${fmtFreqShort(f)}</span>
+  ticks.innerHTML = freqs.map((f,i) => `
+    <span class="freq-tick ${i===state.freqIdx?"active":""}" onclick="setFreqIdx(${i})">${fmtFreqShort(f)}</span>
   `).join("");
 
-  slider.oninput = (e) => {
-    state.freqIdx = parseInt(e.target.value);
-    renderContent();
-  };
+  slider.oninput = e => { state.freqIdx = parseInt(e.target.value); renderContent(); };
 }
 
-function setFreqIdx(i) {
-  state.freqIdx = i;
-  renderContent();
-}
+function setFreqIdx(i) { state.freqIdx = i; renderContent(); }
 
 function fmtFreq(hz) {
   if (hz >= 1e6) return `${(hz/1e6).toFixed(2)} MHz`;
@@ -760,9 +757,6 @@ function fmtFreqShort(hz) {
   return `${hz.toFixed(0)}`;
 }
 
-// ─────────────────────────────────────────────────────────────
-// LIGHTBOX
-// ─────────────────────────────────────────────────────────────
 function openLightbox(src, info) {
   document.getElementById("lb-img").src = src;
   document.getElementById("lb-info").textContent = info;
@@ -774,13 +768,8 @@ function closeLightbox() {
 document.getElementById("lightbox").addEventListener("click", e => {
   if (e.target === e.currentTarget) closeLightbox();
 });
-document.addEventListener("keydown", e => {
-  if (e.key === "Escape") closeLightbox();
-});
+document.addEventListener("keydown", e => { if (e.key === "Escape") closeLightbox(); });
 
-// ─────────────────────────────────────────────────────────────
-// INIT
-// ─────────────────────────────────────────────────────────────
 loadManifest();
 </script>
 </body>
