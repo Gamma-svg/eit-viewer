@@ -2,19 +2,22 @@
 generar_imagenes_eit.py
 =======================
 Recorre la carpeta de pruebas EIT y genera una imagen PNG por cada combinación:
-  phantom / experimento / posición / dispositivo / patrón / algoritmo / frecuencia
+  phantom / experimento / posición / dispositivo / patrón / algoritmo / componente / frecuencia
 
 Uso:
     python generar_imagenes_eit.py \
         --datos   /ruta/a/EIT_Pruebas_Hechas \
         --salida  /ruta/a/web_eit/imgs \
         --metodos svd jac greit bp \
-        --comp    abs
+        --comp    abs real imag
+
+  Si no se especifica --comp, genera las TRES componentes por defecto.
 
 Las imágenes se guardan como:
-  imgs/<phantom>/<experimento>/<pos>/<dispositivo>/<patron>/<algoritmo>/<freq_hz>.png
+  imgs/<phantom>/<experimento>/<pos>/<dispositivo>/<patron>/<algoritmo>/<componente>/<freq_hz>.png
 
-También genera un fichero manifest.json con toda la estructura para la web.
+También genera un fichero manifest.json con toda la estructura para la web,
+incluyendo la dimensión de componente para el selector del visualizador.
 """
 
 import os
@@ -40,11 +43,18 @@ warnings.filterwarnings("ignore")
 # ─────────────────────────────────────────────────────────────
 # CONFIG POR DEFECTO
 # ─────────────────────────────────────────────────────────────
-DEFAULT_COMP    = "abs"          # "real" | "imag" | "abs"
+DEFAULT_COMP    = ["abs", "real", "imag"]   # genera las tres si no se especifica
 DEFAULT_METODOS = ["svd", "jac", "greit", "bp"]
 FASE_EN_GRADOS  = True
-FIG_SIZE        = (3.2, 3.2)    # px de cada imagen individual
+FIG_SIZE        = (3.2, 3.2)
 DPI             = 90
+
+# Etiquetas legibles para el visualizador
+COMP_LABELS = {
+    "abs":  "Módulo |Z|",
+    "real": "Parte real (σ)",
+    "imag": "Parte imaginaria (ε)",
+}
 
 # ─────────────────────────────────────────────────────────────
 # LECTURA .dat
@@ -201,10 +211,8 @@ def guardar_imagen(eit, ds, mesh_obj, metodo, out_path):
             xg, yg, ds_grid = eit.mask_value(ds, mask_value=np.nan)
             ax.pcolormesh(xg, yg, ds_grid, shading="auto", cmap="RdBu_r")
     except Exception as e:
-        # fallback
         ax.tripcolor(x, y, tri, np.real(ds), shading="flat", cmap="RdBu_r")
 
-    # Electrodos
     for j, e in enumerate(mesh_obj.el_pos):
         ax.annotate(str(j + 1), xy=(x[e], y[e]),
                     color="white", fontsize=7, ha="center", va="center",
@@ -249,13 +257,6 @@ def fmt_freq_label(hz):
 # DESCUBRIMIENTO DE PARES (baseline, data)
 # ─────────────────────────────────────────────────────────────
 
-PATRON_MAP = {
-    "adj-adj":    ("Adjacent", "Adjacent Adjacent"),
-    "op-adj":     ("Opposite", "Opposite Adjacent"),
-    "skip2-adj":  ("Skip2",    "Skip 2"),
-    "skip-2-adj": ("Skip2",    "Skip 2"),
-}
-
 def patron_desde_filename(fname):
     fname_lower = fname.lower()
     if "adj-adj" in fname_lower or "adjacent adjacent" in fname_lower:
@@ -268,12 +269,7 @@ def patron_desde_filename(fname):
 
 
 def encontrar_baseline(dat_path, base_dir):
-    """
-    Dada la ruta de un .dat de datos, encuentra el .dat de baseline
-    del mismo dispositivo y patrón de excitación.
-    """
     parts = dat_path.parts
-    # Identificar phantom (PLA, Pollo, Vegetales)
     phantom_idx = None
     for i, p in enumerate(parts):
         if p in ("PLA", "Pollo", "Vegetales"):
@@ -283,13 +279,11 @@ def encontrar_baseline(dat_path, base_dir):
         return None
 
     phantom  = parts[phantom_idx]
-    device   = parts[phantom_idx + 3]   # ScioSpec_Xel, KIT_16el, mACQ_8el
+    device   = parts[phantom_idx + 3]
     patron_f = patron_desde_filename(dat_path.name)
 
-    # Buscar en baseline del mismo phantom
     baseline_root = base_dir / phantom / "Baseline"
     if not baseline_root.exists():
-        # PLA tiene Baseline_11 y Baseline_55
         for sub in base_dir.glob(f"{phantom}/Baseline*"):
             baseline_root = sub
             break
@@ -302,7 +296,6 @@ def encontrar_baseline(dat_path, base_dir):
         if c_patron == patron_f:
             return c
 
-    # fallback: cualquier .dat de ese dispositivo en baseline
     if candidates:
         return candidates[0]
     return None
@@ -310,11 +303,12 @@ def encontrar_baseline(dat_path, base_dir):
 
 # ─────────────────────────────────────────────────────────────
 # PROCESADO DE UN PAR (baseline, data) → imágenes
+# Ahora itera sobre todas las componentes solicitadas
 # ─────────────────────────────────────────────────────────────
 
-def procesar_par(path_base, path_data, salida_dir, metodos, componente):
+def procesar_par(path_base, path_data, salida_dir, metodos, componentes):
     """
-    Genera imágenes para todos los métodos y frecuencias de un par (baseline, data).
+    Genera imágenes para todos los métodos, componentes y frecuencias de un par.
     Devuelve lista de dicts con metadatos para el manifest.
     """
     resultados = []
@@ -360,42 +354,45 @@ def procesar_par(path_base, path_data, salida_dir, metodos, componente):
     if not frecuencias:
         return []
 
-    # Vectores por frecuencia
-    v0_list, v1_list = [], []
-    for freq in frecuencias:
-        sub_b = df_base[df_base["frequency"].round(-1) == round(freq, -1)]
-        sub_d = df_data[df_data["frequency"].round(-1) == round(freq, -1)]
-        if sub_b.empty:
-            sub_b = df_base[df_base["frequency"] == df_base["frequency"].unique()[
-                np.argmin(np.abs(df_base["frequency"].unique() - freq))]]
-        if sub_d.empty:
-            sub_d = df_data
-        v0_list.append(df_a_vector(sub_b, componente, orden_pares))
-        v1_list.append(df_a_vector(sub_d, componente, orden_pares))
+    # ── Iterar sobre componentes ──────────────────────────────────────
+    for componente in componentes:
+        # Vectores por frecuencia para esta componente
+        v0_list, v1_list = [], []
+        for freq in frecuencias:
+            sub_b = df_base[df_base["frequency"].round(-1) == round(freq, -1)]
+            sub_d = df_data[df_data["frequency"].round(-1) == round(freq, -1)]
+            if sub_b.empty:
+                sub_b = df_base[df_base["frequency"] == df_base["frequency"].unique()[
+                    np.argmin(np.abs(df_base["frequency"].unique() - freq))]]
+            if sub_d.empty:
+                sub_d = df_data
+            v0_list.append(df_a_vector(sub_b, componente, orden_pares))
+            v1_list.append(df_a_vector(sub_d, componente, orden_pares))
 
-    for metodo in metodos:
-        for i, freq in enumerate(frecuencias):
-            freq_str = fmt_freq(freq)
-            img_path = salida_dir / f"{patron_str}" / f"{metodo}" / f"{freq_str}.png"
+        for metodo in metodos:
+            for i, freq in enumerate(frecuencias):
+                freq_str = fmt_freq(freq)
+                # Ruta: .../patron/metodo/componente/freq.png
+                img_path = salida_dir / patron_str / metodo / componente / f"{freq_str}.png"
 
-            if img_path.exists():
-                pass  # ya existe, no regenerar
-            else:
-                try:
-                    eit_obj, ds = reconstruir_freq(metodo, proto, mesh_obj,
-                                                   v0_list[i], v1_list[i])
-                    guardar_imagen(eit_obj, ds, mesh_obj, metodo, img_path)
-                except Exception as e:
-                    print(f"    ✗ {metodo} @ {fmt_freq_label(freq)}: {e}")
-                    continue
+                if not img_path.exists():
+                    try:
+                        eit_obj, ds = reconstruir_freq(metodo, proto, mesh_obj,
+                                                       v0_list[i], v1_list[i])
+                        guardar_imagen(eit_obj, ds, mesh_obj, metodo, img_path)
+                    except Exception as e:
+                        print(f"    ✗ {metodo}/{componente} @ {fmt_freq_label(freq)}: {e}")
+                        continue
 
-            resultados.append({
-                "patron":    patron_str,
-                "metodo":    metodo.upper(),
-                "freq_hz":   freq,
-                "freq_label": fmt_freq_label(freq),
-                "img": "imgs/" + "/".join(img_path.parts[-7:]),
-            })
+                resultados.append({
+                    "patron":      patron_str,
+                    "metodo":      metodo.upper(),
+                    "componente":  componente,
+                    "comp_label":  COMP_LABELS.get(componente, componente),
+                    "freq_hz":     freq,
+                    "freq_label":  fmt_freq_label(freq),
+                    "img": "imgs/" + "/".join(img_path.parts[-8:]),
+                })
 
     return resultados
 
@@ -404,26 +401,24 @@ def procesar_par(path_base, path_data, salida_dir, metodos, componente):
 # CONSTRUCCIÓN DEL MANIFEST
 # ─────────────────────────────────────────────────────────────
 
-def construir_manifest(datos_dir, salida_dir, metodos, componente):
-    datos_dir = Path(datos_dir)
+def construir_manifest(datos_dir, salida_dir, metodos, componentes):
+    datos_dir  = Path(datos_dir)
     salida_dir = Path(salida_dir)
 
-    manifest = {}   # manifest[phantom][experimento][pos][dispositivo] = [resultados]
+    manifest = {}
 
-    # Encontrar todos los .dat que NO son baseline
-    all_dats = sorted(datos_dir.rglob("*.dat"))
-    data_dats = [p for p in all_dats if "baseline" not in str(p).lower()]
+    all_dats   = sorted(datos_dir.rglob("*.dat"))
+    data_dats  = [p for p in all_dats if "baseline" not in str(p).lower()]
 
     total = len(data_dats)
     print(f"\n{'='*60}")
-    print(f"  Encontrados {total} archivos .dat de datos")
-    print(f"  Algoritmos : {', '.join(m.upper() for m in metodos)}")
-    print(f"  Componente : {componente}")
+    print(f"  Encontrados  : {total} archivos .dat de datos")
+    print(f"  Algoritmos   : {', '.join(m.upper() for m in metodos)}")
+    print(f"  Componentes  : {', '.join(componentes)}")
     print(f"{'='*60}\n")
 
     for idx, dat_path in enumerate(data_dats):
         parts = dat_path.parts
-        # Localizar phantom_idx
         phantom_idx = None
         for i, p in enumerate(parts):
             if p in ("PLA", "Pollo", "Vegetales"):
@@ -432,12 +427,11 @@ def construir_manifest(datos_dir, salida_dir, metodos, componente):
         if phantom_idx is None:
             continue
 
-        phantom    = parts[phantom_idx]
+        phantom     = parts[phantom_idx]
         experimento = parts[phantom_idx + 1]
         pos         = parts[phantom_idx + 2]
         device      = parts[phantom_idx + 3]
 
-        # Buscar baseline
         path_base = encontrar_baseline(dat_path, datos_dir)
         if path_base is None:
             print(f"  [{idx+1}/{total}] ✗ Sin baseline: {dat_path.name}")
@@ -448,44 +442,46 @@ def construir_manifest(datos_dir, salida_dir, metodos, componente):
             print(f"  [{idx+1}/{total}] ✗ Patrón no reconocido: {dat_path.name}")
             continue
 
-        print(f"  [{idx+1}/{total}] {phantom}/{experimento}/{pos}/{device}/{patron_f}")
+        print(f"  [{idx+1}/{total}] {phantom}/{experimento}/{pos}/{device}/{patron_f}  "
+              f"[comp: {', '.join(componentes)}]")
 
-        # Directorio de salida para este experimento
         exp_salida = salida_dir / phantom / experimento / pos / device
         exp_salida.mkdir(parents=True, exist_ok=True)
 
         resultados = procesar_par(path_base, dat_path, exp_salida,
-                                  metodos, componente)
+                                  metodos, componentes)
 
         if not resultados:
             continue
 
-        # Añadir foto del phantom si existe
-        foto_orig = dat_path.parent.parent / "recorte.png"
+        # Foto del phantom
+        foto_orig  = dat_path.parent.parent / "recorte.png"
         foto_debug = dat_path.parent.parent / "debug.jpg"
         foto = None
-        if foto_orig.exists():
-            dst = salida_dir / phantom / experimento / pos / "recorte.png"
-            dst.parent.mkdir(parents=True, exist_ok=True)
-            if not dst.exists():
-                import shutil
-                shutil.copy2(str(foto_orig), str(dst))
-            foto = "imgs/" + "/".join(dst.parts[-4:])
-        elif foto_debug.exists():
-            dst = salida_dir / phantom / experimento / pos / "debug.jpg"
-            dst.parent.mkdir(parents=True, exist_ok=True)
-            if not dst.exists():
-                import shutil
-                shutil.copy2(str(foto_debug), str(dst))
-            foto = "imgs/" + "/".join(dst.parts[-4:])
+        for src in [foto_orig, foto_debug]:
+            if src.exists():
+                ext = src.suffix
+                dst = salida_dir / phantom / experimento / pos / f"foto{ext}"
+                dst.parent.mkdir(parents=True, exist_ok=True)
+                if not dst.exists():
+                    import shutil
+                    shutil.copy2(str(src), str(dst))
+                foto = "imgs/" + "/".join(dst.parts[-4:])
+                break
 
-        # Registrar en manifest
         m = manifest
         for key in [phantom, experimento, pos, device]:
             m = m.setdefault(key, {})
         m.setdefault("resultados", []).extend(resultados)
         if foto:
             m["foto"] = foto
+
+    # Añadir metadatos globales útiles para el visualizador
+    manifest["__meta__"] = {
+        "componentes":   componentes,
+        "comp_labels":   {c: COMP_LABELS.get(c, c) for c in componentes},
+        "metodos":       [m.upper() for m in metodos],
+    }
 
     return manifest
 
@@ -495,15 +491,19 @@ def construir_manifest(datos_dir, salida_dir, metodos, componente):
 # ─────────────────────────────────────────────────────────────
 
 def main():
-    parser = argparse.ArgumentParser(description="Genera imágenes EIT para la web de defensa")
-    parser.add_argument("--datos",   required=True, help="Ruta a la carpeta EIT_Pruebas_Hechas")
-    parser.add_argument("--salida",  required=True, help="Carpeta de salida (dentro del proyecto web)")
+    parser = argparse.ArgumentParser(
+        description="Genera imágenes EIT multi-componente para el visualizador web"
+    )
+    parser.add_argument("--datos",   required=True,
+                        help="Ruta a la carpeta EIT_Pruebas_Hechas")
+    parser.add_argument("--salida",  required=True,
+                        help="Carpeta de salida (dentro del proyecto web)")
     parser.add_argument("--metodos", nargs="+", default=DEFAULT_METODOS,
                         choices=["svd", "bp", "jac", "greit"],
-                        help="Algoritmos a usar")
-    parser.add_argument("--comp",    default=DEFAULT_COMP,
+                        help="Algoritmos a usar (default: todos)")
+    parser.add_argument("--comp",    nargs="+", default=DEFAULT_COMP,
                         choices=["real", "imag", "abs"],
-                        help="Componente de la señal")
+                        help="Componentes a generar (default: abs real imag)")
     args = parser.parse_args()
 
     salida = Path(args.salida)
@@ -515,13 +515,14 @@ def main():
     with open(manifest_path, "w", encoding="utf-8") as f:
         json.dump(manifest, f, ensure_ascii=False, indent=2)
 
-    # Contar imágenes generadas
+    # Resumen final
     n_imgs = sum(1 for _ in salida.rglob("*.png")) + \
              sum(1 for _ in salida.rglob("*.jpg"))
     print(f"\n{'='*60}")
     print(f"  ✓ Completado")
-    print(f"  Imágenes generadas: {n_imgs}")
-    print(f"  Manifest guardado : {manifest_path}")
+    print(f"  Componentes generadas : {', '.join(args.comp)}")
+    print(f"  Imágenes generadas    : {n_imgs}")
+    print(f"  Manifest guardado     : {manifest_path}")
     print(f"{'='*60}\n")
 
 

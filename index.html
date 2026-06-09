@@ -147,9 +147,7 @@
   .filter-btn.active { background: #0b1e2d; color: var(--accent); border-color: #00d4ff44; }
 
   /* Foto en sidebar (solo desktop) */
-  .sidebar-foto {
-    display: none;
-  }
+  .sidebar-foto { display: none; }
   @media (min-width: 701px) {
     .sidebar-foto {
       display: block;
@@ -183,18 +181,27 @@
   main::-webkit-scrollbar { width: 4px; }
   main::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
 
-  /* ── FREQ BAR ────────────────────────────────────────── */
-  .freq-bar {
+  /* ── CONTROL BAR (freq + componente) ─────────────────── */
+  .control-bar {
     background: var(--panel);
     border: 1px solid var(--border);
     border-radius: var(--radius);
     padding: 10px 14px;
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 14px;
     flex-wrap: wrap;
   }
-  .freq-bar .label {
+
+  /* Frecuencia */
+  .ctrl-block {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+    min-width: 180px;
+  }
+  .ctrl-label {
     font-family: var(--mono);
     font-size: 10px;
     letter-spacing: .1em;
@@ -242,6 +249,47 @@
     padding: 2px 0;
   }
   .freq-tick.active { color: var(--accent); }
+
+  /* Divisor vertical entre freq y componente */
+  .ctrl-divider {
+    width: 1px;
+    height: 32px;
+    background: var(--border);
+    flex-shrink: 0;
+  }
+
+  /* Selector de componente */
+  .comp-block {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+  .comp-tabs {
+    display: flex;
+    gap: 4px;
+  }
+  .comp-tab {
+    padding: 4px 10px;
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: .06em;
+    background: transparent;
+    color: var(--text-dim);
+    cursor: pointer;
+    transition: all .15s;
+    white-space: nowrap;
+  }
+  .comp-tab:hover { background: #131c24; color: var(--text); border-color: var(--border); }
+  .comp-tab.active {
+    background: #0b1e2d;
+    color: var(--accent);
+    border-color: #00d4ff55;
+  }
+  /* Si solo hay una componente disponible, ocultamos el bloque */
+  .comp-block.single { display: none; }
 
   /* ── RECON GRID ──────────────────────────────────────── */
   .recon-section { display: flex; flex-direction: column; gap: 10px; }
@@ -316,13 +364,12 @@
     padding: 12px;
   }
 
-  /* ── PHANTOM STRIP (main area, mobile) ───────────────── */
+  /* ── PHANTOM STRIP ───────────────────────────────────── */
   .phantom-strip {
     display: flex;
     gap: 12px;
     align-items: flex-start;
   }
-  /* En desktop la foto ya está en sidebar, ocultamos en main */
   @media (min-width: 701px) {
     .phantom-strip .phantom-foto-main { display: none; }
   }
@@ -435,6 +482,12 @@
 
     main { grid-row: 3; grid-column: 1; padding: 10px; gap: 10px; }
     .algo-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+
+    /* En móvil el divisor vertical no tiene sentido */
+    .ctrl-divider { display: none; }
+    .control-bar { flex-direction: column; align-items: flex-start; gap: 10px; }
+    .ctrl-block { width: 100%; }
+    .comp-block { width: 100%; }
   }
 
   ::-webkit-scrollbar { width: 4px; }
@@ -469,7 +522,6 @@
         <div id="filter-pos"></div>
       </div>
     </div>
-    <!-- Foto en sidebar solo desktop -->
     <div class="sidebar-foto" id="sidebar-foto" style="display:none">
       <div class="sidebar-foto-label">Phantom photo</div>
       <img id="sidebar-foto-img" src="" alt="phantom"/>
@@ -477,14 +529,30 @@
   </aside>
 
   <main>
-    <div class="freq-bar" id="freq-bar" style="display:none">
-      <span class="label">Freq</span>
-      <div class="slider-wrap">
-        <input type="range" id="freq-slider" min="0" max="0" value="0"/>
-        <div class="freq-ticks" id="freq-ticks"></div>
+    <!-- Barra unificada: frecuencia + componente -->
+    <div class="control-bar" id="control-bar" style="display:none">
+
+      <!-- Bloque frecuencia -->
+      <div class="ctrl-block">
+        <span class="ctrl-label">Freq</span>
+        <div class="slider-wrap">
+          <input type="range" id="freq-slider" min="0" max="0" value="0"/>
+          <div class="freq-ticks" id="freq-ticks"></div>
+        </div>
+        <div class="freq-display" id="freq-display">—</div>
       </div>
-      <div class="freq-display" id="freq-display">—</div>
+
+      <!-- Divisor -->
+      <div class="ctrl-divider"></div>
+
+      <!-- Bloque componente -->
+      <div class="comp-block" id="comp-block">
+        <span class="ctrl-label">Signal</span>
+        <div class="comp-tabs" id="comp-tabs"></div>
+      </div>
+
     </div>
+
     <div id="content">
       <div class="empty-state">
         <div class="icon">⬡</div>
@@ -502,49 +570,130 @@
 
 <script>
 let MANIFEST = null;
-let state = { phantom: null, exp: null, pos: null, device: null, freqIdx: 0 };
+
+// Etiquetas cortas para los tabs de componente
+const COMP_SHORT = { abs: "|Z|", real: "Re(σ)", imag: "Im(ε)" };
+
+let state = {
+  phantom:  null,
+  exp:      null,
+  pos:      null,
+  device:   null,
+  freqIdx:  0,
+  comp:     null,   // componente activa: "abs" | "real" | "imag"
+};
+
+// Componentes disponibles según el manifest (se rellena al cargar)
+let availableComps = [];
 
 function toggleSidebar() {
   document.getElementById('sidebar').classList.toggle('open');
 }
-
-// Solo cierra el sidebar en móvil cuando se selecciona una posición (P)
 function closeSidebarOnPos() {
-  if (window.innerWidth <= 700) {
+  if (window.innerWidth <= 700)
     document.getElementById('sidebar').classList.remove('open');
-  }
 }
 
+// ── CARGA DEL MANIFEST ────────────────────────────────────
 async function loadManifest() {
   try {
     const r = await fetch("manifest.json");
     if (!r.ok) throw new Error("not found");
     MANIFEST = await r.json();
-    const nExp = Object.values(MANIFEST).reduce((a, ph) => a + Object.keys(ph).length, 0);
+
+    // Leer componentes disponibles desde __meta__ (nuevo script)
+    // o inferirlas de los resultados si es manifest antiguo
+    if (MANIFEST.__meta__ && MANIFEST.__meta__.componentes) {
+      availableComps = MANIFEST.__meta__.componentes;
+    } else {
+      const found = new Set();
+      walkResults(MANIFEST, r => r.componente && found.add(r.componente));
+      availableComps = found.size ? [...found] : ["abs"];
+    }
+
+    // Componente por defecto: abs si existe, si no la primera disponible
+    state.comp = availableComps.includes("abs") ? "abs" : availableComps[0];
+
+    buildCompTabs();
+
+    const nExp  = countExps();
     const nImgs = countImages();
-    document.getElementById("status-badge").textContent = `${nExp} exp · ${nImgs} imgs`;
+    document.getElementById("status-badge").textContent =
+      `${nExp} exp · ${nImgs} imgs · ${availableComps.join("/").toUpperCase()}`;
+
     buildPhantomFilter();
   } catch(e) {
     document.getElementById("status-badge").textContent = "⚠ manifest.json not found";
-    document.getElementById("content").innerHTML = `<div class="empty-state"><div class="icon">⚠</div><div>Run generar_imagenes_eit.py first</div></div>`;
+    document.getElementById("content").innerHTML =
+      `<div class="empty-state"><div class="icon">⚠</div><div>Run generar_imagenes_eit.py first</div></div>`;
   }
 }
 
+function walkResults(obj, fn) {
+  if (!obj || typeof obj !== "object") return;
+  if (Array.isArray(obj.resultados)) obj.resultados.forEach(fn);
+  for (const k in obj)
+    if (k !== "resultados" && typeof obj[k] === "object") walkResults(obj[k], fn);
+}
+
+function countExps() {
+  let n = 0;
+  for (const ph in MANIFEST) {
+    if (ph === "__meta__") continue;
+    n += Object.keys(MANIFEST[ph]).length;
+  }
+  return n;
+}
 function countImages() {
   let n = 0;
-  function walk(obj) {
-    if (obj && obj.resultados) n += obj.resultados.length;
-    for (const k in obj) if (typeof obj[k] === "object" && k !== "resultados") walk(obj[k]);
-  }
-  walk(MANIFEST);
+  walkResults(MANIFEST, () => n++);
   return n;
 }
 
+// ── TABS DE COMPONENTE ────────────────────────────────────
+function buildCompTabs() {
+  const container = document.getElementById("comp-tabs");
+  const block     = document.getElementById("comp-block");
+  container.innerHTML = "";
+
+  if (availableComps.length <= 1) {
+    block.classList.add("single");   // ocultar si solo hay una
+    return;
+  }
+  block.classList.remove("single");
+
+  for (const comp of availableComps) {
+    const btn = document.createElement("button");
+    btn.className = "comp-tab" + (comp === state.comp ? " active" : "");
+    btn.textContent = COMP_SHORT[comp] || comp.toUpperCase();
+    btn.title = labelForComp(comp);
+    btn.dataset.comp = comp;
+    btn.addEventListener("click", () => selectComp(comp));
+    container.appendChild(btn);
+  }
+}
+
+function labelForComp(comp) {
+  if (MANIFEST.__meta__ && MANIFEST.__meta__.comp_labels)
+    return MANIFEST.__meta__.comp_labels[comp] || comp;
+  return { abs: "Módulo |Z|", real: "Parte real (σ)", imag: "Parte imaginaria (ε)" }[comp] || comp;
+}
+
+function selectComp(comp) {
+  state.comp = comp;
+  // Actualizar tab activo sin re-renderizar todo
+  document.querySelectorAll(".comp-tab").forEach(b =>
+    b.classList.toggle("active", b.dataset.comp === comp)
+  );
+  renderContent();
+}
+
+// ── FILTROS SIDEBAR ───────────────────────────────────────
 function buildPhantomFilter() {
   const c = document.getElementById("filter-phantom");
   c.innerHTML = "";
-  for (const ph of Object.keys(MANIFEST)) {
-    const btn = makeBtn(ph, ph, () => selectPhantom(ph));  // no cierra
+  for (const ph of Object.keys(MANIFEST).filter(k => k !== "__meta__")) {
+    const btn = makeBtn(ph, ph, () => selectPhantom(ph));
     if (ph === state.phantom) btn.classList.add("active");
     c.appendChild(btn);
   }
@@ -554,7 +703,7 @@ function buildExpFilter(phantom) {
   const c = document.getElementById("filter-exp");
   c.innerHTML = "";
   for (const ex of Object.keys(MANIFEST[phantom] || {})) {
-    const btn = makeBtn(ex.replace(/_/g," "), ex, () => selectExp(ex));  // no cierra
+    const btn = makeBtn(ex.replace(/_/g," "), ex, () => selectExp(ex));
     if (ex === state.exp) btn.classList.add("active");
     c.appendChild(btn);
   }
@@ -564,10 +713,7 @@ function buildPosFilter(phantom, exp) {
   const c = document.getElementById("filter-pos");
   c.innerHTML = "";
   for (const pos of Object.keys((MANIFEST[phantom]||{})[exp]||{})) {
-    const btn = makeBtn(pos, pos, () => {
-      selectPos(pos);
-      closeSidebarOnPos();  // solo cierra al seleccionar P
-    });
+    const btn = makeBtn(pos, pos, () => { selectPos(pos); closeSidebarOnPos(); });
     if (pos === state.pos) btn.classList.add("active");
     c.appendChild(btn);
   }
@@ -583,14 +729,14 @@ function makeBtn(label, value, onClick) {
 }
 
 function setActive(id, value) {
-  document.querySelectorAll(`#${id} .filter-btn`).forEach(b => {
-    b.classList.toggle("active", b.dataset.value === value);
-  });
+  document.querySelectorAll(`#${id} .filter-btn`).forEach(b =>
+    b.classList.toggle("active", b.dataset.value === value)
+  );
 }
 
 function updateSidebarFoto(foto) {
   const wrapper = document.getElementById("sidebar-foto");
-  const img = document.getElementById("sidebar-foto-img");
+  const img     = document.getElementById("sidebar-foto-img");
   if (foto && window.innerWidth > 700) {
     img.src = foto;
     wrapper.style.display = "block";
@@ -599,8 +745,9 @@ function updateSidebarFoto(foto) {
   }
 }
 
+// ── SELECCIÓN ─────────────────────────────────────────────
 function selectPhantom(ph) {
-  state = { phantom: ph, exp: null, pos: null, device: null, freqIdx: 0 };
+  state = { ...state, phantom: ph, exp: null, pos: null, device: null, freqIdx: 0 };
   setActive("filter-phantom", ph);
   buildExpFilter(ph);
   document.getElementById("filter-pos").innerHTML = "";
@@ -614,10 +761,8 @@ function selectExp(ex) {
   buildPosFilter(state.phantom, ex);
   updateSidebarFoto(null);
   const positions = Object.keys((MANIFEST[state.phantom]||{})[ex]||{});
-  if (positions.length === 1) {
-    selectPos(positions[0]);
-    closeSidebarOnPos();
-  } else renderContent();
+  if (positions.length === 1) { selectPos(positions[0]); closeSidebarOnPos(); }
+  else renderContent();
 }
 
 function selectPos(pos) {
@@ -631,11 +776,12 @@ function selectDevice(dev) {
   renderContent();
 }
 
+// ── RENDER PRINCIPAL ──────────────────────────────────────
 function renderContent() {
   const content = document.getElementById("content");
   if (!state.phantom || !state.exp || !state.pos) {
     content.innerHTML = `<div class="empty-state"><div class="icon">⬡</div><div>Select phantom, experiment and position</div></div>`;
-    document.getElementById("freq-bar").style.display = "none";
+    document.getElementById("control-bar").style.display = "none";
     updateSidebarFoto(null);
     return;
   }
@@ -651,22 +797,29 @@ function renderContent() {
   if (!state.device || !devices.includes(state.device)) state.device = devices[0];
 
   const devData = posData[state.device] || {};
-  const results = devData.resultados || [];
+  const allResults = devData.resultados || [];
   const foto = posData.foto || devData.foto || null;
 
-  // Actualizar foto en sidebar (desktop)
   updateSidebarFoto(foto);
+
+  // Filtrar por componente activa
+  // Soporte retrocompatible: si los resultados no tienen campo "componente"
+  // (manifest antiguo) los mostramos todos sin filtrar
+  const hasCompField = allResults.some(r => r.componente);
+  const results = hasCompField
+    ? allResults.filter(r => r.componente === state.comp)
+    : allResults;
 
   const freqs = [...new Set(results.map(r => r.freq_hz))].sort((a,b) => a-b);
   if (!freqs.length) {
-    content.innerHTML = `<div class="empty-state"><div class="icon">⬡</div><div>No reconstructions found</div></div>`;
-    document.getElementById("freq-bar").style.display = "none";
+    content.innerHTML = `<div class="empty-state"><div class="icon">⬡</div><div>No reconstructions for ${(COMP_SHORT[state.comp]||state.comp)}</div></div>`;
+    document.getElementById("control-bar").style.display = "none";
     return;
   }
 
   if (state.freqIdx >= freqs.length) state.freqIdx = 0;
   const selFreq = freqs[state.freqIdx];
-  buildFreqBar(freqs);
+  buildControlBar(freqs);
 
   const atFreq = results.filter(r => r.freq_hz === selFreq);
   const byPatron = {};
@@ -676,8 +829,8 @@ function renderContent() {
   }
 
   const COLORS = { SVD: "#00d4ff", JAC: "#ff6b35", GREIT: "#a78bfa", BP: "#34d399" };
+  const compLabel = labelForComp(state.comp);
 
-  // En móvil mostramos la foto en el área principal
   let html = `<div class="phantom-strip">
     ${foto ? `<div class="phantom-foto-main">
       <div class="phantom-foto-main-label">Phantom</div>
@@ -687,14 +840,17 @@ function renderContent() {
       <div style="margin-bottom:8px">
         <div style="font-family:var(--mono);font-size:9px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;margin-bottom:5px">Device</div>
         <div class="device-tabs">
-          ${devices.map(d => `<button class="device-tab ${d===state.device?"active":""}" onclick="selectDevice('${d}')">${d}</button>`).join("")}
+          ${devices.map(d =>
+            `<button class="device-tab ${d===state.device?"active":""}" onclick="selectDevice('${d}')">${d}</button>`
+          ).join("")}
         </div>
       </div>
       <div style="font-size:11px;color:var(--text-dim);line-height:1.8">
         <span style="color:var(--text)">${state.phantom}</span> ·
         <span style="color:var(--text)">${state.exp.replace(/_/g," ")}</span> ·
         <span style="color:var(--text)">${state.pos}</span> ·
-        <span style="color:var(--accent)">${state.device}</span>
+        <span style="color:var(--accent)">${state.device}</span> ·
+        <span style="color:var(--accent2)">${compLabel}</span>
       </div>
     </div>
   </div>`;
@@ -708,13 +864,14 @@ function renderContent() {
       </div>
       <div class="algo-grid">
         ${list.map(([name, r]) => `
-          <div class="algo-card" onclick="openLightbox('${r.img}','${name} · ${patron} · ${r.freq_label} · ${state.device}')">
+          <div class="algo-card" onclick="openLightbox('${r.img}','${name} · ${patron} · ${r.freq_label} · ${state.device} · ${COMP_SHORT[state.comp]||state.comp}')">
             <div class="algo-card-header">
               <span class="algo-name" style="color:${COLORS[name]||'var(--accent)'}">${name}</span>
               <span class="algo-patron">${patron}</span>
             </div>
             <div class="algo-img-wrap">
-              <img src="${r.img}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"/>
+              <img src="${r.img}" loading="lazy"
+                onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"/>
               <div class="no-img" style="display:none;width:100%;height:100%;flex-direction:column;align-items:center;justify-content:center">
                 <div style="font-size:18px;opacity:.3">⬡</div><div>${name}</div>
               </div>
@@ -727,14 +884,15 @@ function renderContent() {
   content.innerHTML = html;
 }
 
-function buildFreqBar(freqs) {
-  const bar = document.getElementById("freq-bar");
+// ── BARRA DE CONTROLES (freq + comp ya gestionada arriba) ─
+function buildControlBar(freqs) {
+  const bar    = document.getElementById("control-bar");
   const slider = document.getElementById("freq-slider");
-  const disp = document.getElementById("freq-display");
-  const ticks = document.getElementById("freq-ticks");
+  const disp   = document.getElementById("freq-display");
+  const ticks  = document.getElementById("freq-ticks");
 
   bar.style.display = "flex";
-  slider.max = freqs.length - 1;
+  slider.max   = freqs.length - 1;
   slider.value = state.freqIdx;
   disp.textContent = fmtFreq(freqs[state.freqIdx]);
 
@@ -758,6 +916,7 @@ function fmtFreqShort(hz) {
   return `${hz.toFixed(0)}`;
 }
 
+// ── LIGHTBOX ──────────────────────────────────────────────
 function openLightbox(src, info) {
   document.getElementById("lb-img").src = src;
   document.getElementById("lb-info").textContent = info;
@@ -771,13 +930,11 @@ document.getElementById("lightbox").addEventListener("click", e => {
 });
 document.addEventListener("keydown", e => { if (e.key === "Escape") closeLightbox(); });
 
-// Actualizar foto sidebar al redimensionar ventana
 window.addEventListener("resize", () => {
   if (state.pos) {
     const posData = ((MANIFEST[state.phantom]||{})[state.exp]||{})[state.pos]||{};
     const devData = posData[state.device] || {};
-    const foto = posData.foto || devData.foto || null;
-    updateSidebarFoto(foto);
+    updateSidebarFoto(posData.foto || devData.foto || null);
   }
 });
 
