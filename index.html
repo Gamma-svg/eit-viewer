@@ -625,7 +625,7 @@ async function loadManifest() {
     }
 
     // Componente por defecto: abs si existe, si no la primera disponible
-    state.comp = availableComps.includes("abs") ? "abs" : availableComps[0];
+    state.comp = availableComps.includes("real") ? "real" : availableComps[0];
 
     buildCompTabs();
 
