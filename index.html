@@ -91,15 +91,23 @@
   }
   .burger {
     display: none;
-    background: transparent;
-    border: 1px solid var(--border);
-    color: var(--text-dim);
+    align-items: center;
+    gap: 6px;
+    background: #0b1e2d;
+    border: 1px solid #00d4ff55;
+    color: var(--accent);
     border-radius: var(--radius);
-    padding: 4px 8px;
+    padding: 6px 10px;
     cursor: pointer;
-    font-size: 16px;
+    font-size: 14px;
+    font-family: var(--mono);
     margin-left: 8px;
     flex-shrink: 0;
+  }
+  .burger-label {
+    font-size: 10px;
+    letter-spacing: .08em;
+    text-transform: uppercase;
   }
 
   /* ── SIDEBAR ─────────────────────────────────────────── */
@@ -254,47 +262,6 @@
     padding: 2px 0;
   }
   .freq-tick.active { color: var(--accent); }
-
-  /* Divisor vertical entre freq y componente */
-  .ctrl-divider {
-    width: 1px;
-    height: 32px;
-    background: var(--border);
-    flex-shrink: 0;
-  }
-
-  /* Selector de componente */
-  .comp-block {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-shrink: 0;
-  }
-  .comp-tabs {
-    display: flex;
-    gap: 4px;
-  }
-  .comp-tab {
-    padding: 4px 10px;
-    border: 1px solid var(--border);
-    border-radius: 20px;
-    font-family: var(--mono);
-    font-size: 10px;
-    letter-spacing: .06em;
-    background: transparent;
-    color: var(--text-dim);
-    cursor: pointer;
-    transition: all .15s;
-    white-space: nowrap;
-  }
-  .comp-tab:hover { background: #131c24; color: var(--text); border-color: var(--border); }
-  .comp-tab.active {
-    background: #0b1e2d;
-    color: var(--accent);
-    border-color: #00d4ff55;
-  }
-  /* Si solo hay una componente disponible, ocultamos el bloque */
-  .comp-block.single { display: none; }
 
   /* ── RECON GRID ──────────────────────────────────────── */
   .recon-section { display: flex; flex-direction: column; gap: 10px; }
@@ -466,7 +433,7 @@
       height: 100vh; overflow: hidden;
     }
     header { grid-column: 1; padding: 0 12px; }
-    .burger { display: flex; align-items: center; justify-content: center; }
+    .burger { display: flex; }
 
     aside {
       grid-row: 2; grid-column: 1;
@@ -496,11 +463,8 @@
       padding: 8px 12px;
     }
 
-    /* En móvil el divisor vertical no tiene sentido */
-    .ctrl-divider { display: none; }
     .control-bar { flex-direction: column; align-items: flex-start; gap: 10px; }
     .ctrl-block { width: 100%; }
-    .comp-block { width: 100%; }
   }
 
   ::-webkit-scrollbar { width: 4px; }
@@ -517,7 +481,7 @@
       <div class="subtitle">Electrical Impedance Tomography · TFG Defense</div>
     </div>
     <div class="badge" id="status-badge">Loading…</div>
-    <button class="burger" id="burger-btn" onclick="toggleSidebar()">☰</button>
+    <button class="burger" id="burger-btn" onclick="toggleSidebar()">☰ <span class="burger-label">Filtros</span></button>
   </header>
 
   <aside id="sidebar">
@@ -555,15 +519,6 @@
         <div class="freq-display" id="freq-display">—</div>
       </div>
 
-      <!-- Divisor -->
-      <div class="ctrl-divider"></div>
-
-      <!-- Bloque componente -->
-      <div class="comp-block" id="comp-block">
-        <span class="ctrl-label">Signal</span>
-        <div class="comp-tabs" id="comp-tabs"></div>
-      </div>
-
     </div>
 
     <div id="content">
@@ -584,20 +539,13 @@
 <script>
 let MANIFEST = null;
 
-// Etiquetas cortas para los tabs de componente
-const COMP_SHORT = { abs: "|Z|", real: "Re(σ)", imag: "Im(ε)" };
-
 let state = {
   phantom:  null,
   exp:      null,
   pos:      null,
   device:   null,
   freqIdx:  0,
-  comp:     null,   // componente activa: "abs" | "real" | "imag"
 };
-
-// Componentes disponibles según el manifest (se rellena al cargar)
-let availableComps = [];
 
 function toggleSidebar() {
   document.getElementById('sidebar').classList.toggle('open');
@@ -610,35 +558,27 @@ function closeSidebarOnPos() {
 // ── CARGA DEL MANIFEST ────────────────────────────────────
 async function loadManifest() {
   try {
-    const r = await fetch("manifest.json");
+    const r = await fetch("manifest_2.json");
     if (!r.ok) throw new Error("not found");
     MANIFEST = await r.json();
-
-    // Leer componentes disponibles desde __meta__ (nuevo script)
-    // o inferirlas de los resultados si es manifest antiguo
-    if (MANIFEST.__meta__ && MANIFEST.__meta__.componentes) {
-      availableComps = MANIFEST.__meta__.componentes;
-    } else {
-      const found = new Set();
-      walkResults(MANIFEST, r => r.componente && found.add(r.componente));
-      availableComps = found.size ? [...found] : ["abs"];
-    }
-
-    // Componente por defecto: abs si existe, si no la primera disponible
-    state.comp = availableComps.includes("real") ? "real" : availableComps[0];
-
-    buildCompTabs();
 
     const nExp  = countExps();
     const nImgs = countImages();
     document.getElementById("status-badge").textContent =
-      `${nExp} exp · ${nImgs} imgs · ${availableComps.join("/").toUpperCase()}`;
+      `${nExp} exp · ${nImgs} imgs`;
 
     buildPhantomFilter();
+
+    // En móvil, abrir el menú de filtros por defecto para que se vea
+    // claramente al entrar (en vez de depender de que el usuario
+    // encuentre el botón ☰).
+    if (window.innerWidth <= 700) {
+      document.getElementById("sidebar").classList.add("open");
+    }
   } catch(e) {
-    document.getElementById("status-badge").textContent = "⚠ manifest.json not found";
+    document.getElementById("status-badge").textContent = "⚠ manifest_2.json not found";
     document.getElementById("content").innerHTML =
-      `<div class="empty-state"><div class="icon">⚠</div><div>Run generar_imagenes_eit.py first</div></div>`;
+      `<div class="empty-state"><div class="icon">⚠</div><div>Run generar_imagenes_eit_v3.py first</div></div>`;
   }
 }
 
@@ -661,44 +601,6 @@ function countImages() {
   let n = 0;
   walkResults(MANIFEST, () => n++);
   return n;
-}
-
-// ── TABS DE COMPONENTE ────────────────────────────────────
-function buildCompTabs() {
-  const container = document.getElementById("comp-tabs");
-  const block     = document.getElementById("comp-block");
-  container.innerHTML = "";
-
-  if (availableComps.length <= 1) {
-    block.classList.add("single");   // ocultar si solo hay una
-    return;
-  }
-  block.classList.remove("single");
-
-  for (const comp of availableComps) {
-    const btn = document.createElement("button");
-    btn.className = "comp-tab" + (comp === state.comp ? " active" : "");
-    btn.textContent = COMP_SHORT[comp] || comp.toUpperCase();
-    btn.title = labelForComp(comp);
-    btn.dataset.comp = comp;
-    btn.addEventListener("click", () => selectComp(comp));
-    container.appendChild(btn);
-  }
-}
-
-function labelForComp(comp) {
-  if (MANIFEST.__meta__ && MANIFEST.__meta__.comp_labels)
-    return MANIFEST.__meta__.comp_labels[comp] || comp;
-  return { abs: "Módulo |Z|", real: "Parte real (σ)", imag: "Parte imaginaria (ε)" }[comp] || comp;
-}
-
-function selectComp(comp) {
-  state.comp = comp;
-  // Actualizar tab activo sin re-renderizar todo
-  document.querySelectorAll(".comp-tab").forEach(b =>
-    b.classList.toggle("active", b.dataset.comp === comp)
-  );
-  renderContent();
 }
 
 // ── FILTROS SIDEBAR ───────────────────────────────────────
@@ -810,22 +712,14 @@ function renderContent() {
   if (!state.device || !devices.includes(state.device)) state.device = devices[0];
 
   const devData = posData[state.device] || {};
-  const allResults = devData.resultados || [];
+  const results = devData.resultados || [];
   const foto = posData.foto || devData.foto || null;
 
   updateSidebarFoto(foto);
 
-  // Filtrar por componente activa
-  // Soporte retrocompatible: si los resultados no tienen campo "componente"
-  // (manifest antiguo) los mostramos todos sin filtrar
-  const hasCompField = allResults.some(r => r.componente);
-  const results = hasCompField
-    ? allResults.filter(r => r.componente === state.comp)
-    : allResults;
-
   const freqs = [...new Set(results.map(r => r.freq_hz))].sort((a,b) => a-b);
   if (!freqs.length) {
-    content.innerHTML = `<div class="empty-state"><div class="icon">⬡</div><div>No reconstructions for ${(COMP_SHORT[state.comp]||state.comp)}</div></div>`;
+    content.innerHTML = `<div class="empty-state"><div class="icon">⬡</div><div>No reconstructions available</div></div>`;
     document.getElementById("control-bar").style.display = "none";
     return;
   }
@@ -842,7 +736,6 @@ function renderContent() {
   }
 
   const COLORS = { SVD: "#00d4ff", JAC: "#ff6b35", GREIT: "#a78bfa", BP: "#34d399" };
-  const compLabel = labelForComp(state.comp);
 
   let html = `<div class="phantom-strip">
     ${foto ? `<div class="phantom-foto-main">
@@ -862,8 +755,7 @@ function renderContent() {
         <span style="color:var(--text)">${state.phantom}</span> ·
         <span style="color:var(--text)">${state.exp.replace(/_/g," ")}</span> ·
         <span style="color:var(--text)">${state.pos}</span> ·
-        <span style="color:var(--accent)">${state.device}</span> ·
-        <span style="color:var(--accent2)">${compLabel}</span>
+        <span style="color:var(--accent)">${state.device}</span>
       </div>
     </div>
   </div>`;
@@ -877,7 +769,7 @@ function renderContent() {
       </div>
       <div class="algo-grid">
         ${list.map(([name, r]) => `
-          <div class="algo-card" onclick="openLightbox('${r.img}','${name} · ${patron} · ${r.freq_label} · ${state.device} · ${COMP_SHORT[state.comp]||state.comp}')">
+          <div class="algo-card" onclick="openLightbox('${r.img}','${name} · ${patron} · ${r.freq_label} · ${state.device}')">
             <div class="algo-card-header">
               <span class="algo-name" style="color:${COLORS[name]||'var(--accent)'}">${name}</span>
               <span class="algo-patron">${patron}</span>
