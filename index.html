@@ -176,6 +176,28 @@
       margin-bottom: 6px;
     }
   }
+  /* Tabs Foto / Segmentación (sidebar y tira móvil) */
+  .foto-tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 6px;
+  }
+  .foto-tab {
+    padding: 3px 8px;
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: .06em;
+    background: transparent;
+    color: var(--text-dim);
+    cursor: pointer;
+    transition: all .15s;
+    white-space: nowrap;
+  }
+  .foto-tab:hover  { background: #131c24; color: var(--text); border-color: var(--border); }
+  .foto-tab.active { background: #0b1e2d; color: var(--accent); border-color: #00d4ff55; }
+  .foto-tab.disabled { opacity: .35; cursor: default; pointer-events: none; }
 
   /* ── MAIN ────────────────────────────────────────────── */
   main {
@@ -501,6 +523,7 @@
     </div>
     <div class="sidebar-foto" id="sidebar-foto" style="display:none">
       <div class="sidebar-foto-label">Phantom photo</div>
+      <div class="foto-tabs" id="foto-tabs"></div>
       <img id="sidebar-foto-img" src="" alt="phantom"/>
     </div>
   </aside>
@@ -545,7 +568,11 @@ let state = {
   pos:      null,
   device:   null,
   freqIdx:  0,
+  fotoView: "cam",   // "cam" = foto de cámara (recorte.png) | "seg" = eit_reference.png
 };
+
+// Rutas de las dos imágenes de phantom para la posición actual
+let currentFotoPaths = { cam: null, seg: null };
 
 function toggleSidebar() {
   document.getElementById('sidebar').classList.toggle('open');
@@ -652,12 +679,80 @@ function setActive(id, value) {
 function updateSidebarFoto(foto) {
   const wrapper = document.getElementById("sidebar-foto");
   const img     = document.getElementById("sidebar-foto-img");
+  const tabsEl  = document.getElementById("foto-tabs");
+
   if (foto && window.innerWidth > 700) {
-    img.src = foto;
+    currentFotoPaths = {
+      seg: foto,                                       // eit_reference.png (segmentación)
+      cam: foto.replace(/eit_reference\.png$/, "recorte.png"), // foto de cámara
+    };
     wrapper.style.display = "block";
+    renderFotoTabs(tabsEl);
+    setFotoImg(img);
   } else {
+    currentFotoPaths = { cam: null, seg: null };
     wrapper.style.display = "none";
   }
+}
+
+function renderFotoTabs(tabsEl) {
+  tabsEl.innerHTML = `
+    <button class="foto-tab ${state.fotoView==='cam'?'active':''}" data-view="cam">Foto</button>
+    <button class="foto-tab ${state.fotoView==='seg'?'active':''}" data-view="seg">Segm.</button>
+  `;
+  tabsEl.querySelectorAll(".foto-tab").forEach(b =>
+    b.addEventListener("click", () => setFotoView(b.dataset.view))
+  );
+}
+
+function setFotoView(view) {
+  if (!currentFotoPaths[view]) return;
+  state.fotoView = view;
+  document.querySelectorAll("#foto-tabs .foto-tab").forEach(b =>
+    b.classList.toggle("active", b.dataset.view === view)
+  );
+  setFotoImg(document.getElementById("sidebar-foto-img"));
+  updateMobileFotoImg();
+}
+
+// Muestra la vista activa (state.fotoView); si falla la imagen, cae a la
+// otra vista automáticamente y desactiva el tab correspondiente.
+function setFotoImg(img) {
+  const view = state.fotoView;
+  const src  = currentFotoPaths[view];
+  if (!src) return;
+  img.style.display = "";
+  img.onerror = () => {
+    const other = view === "cam" ? "seg" : "cam";
+    const tab = document.querySelector(`#foto-tabs .foto-tab[data-view="${view}"]`);
+    if (tab) tab.classList.add("disabled");
+    if (currentFotoPaths[other]) {
+      state.fotoView = other;
+      document.querySelectorAll("#foto-tabs .foto-tab").forEach(b =>
+        b.classList.toggle("active", b.dataset.view === other)
+      );
+      img.onerror = null;
+      img.src = currentFotoPaths[other];
+      updateMobileFotoImg();
+    } else {
+      img.style.display = "none";
+    }
+  };
+  img.src = src;
+}
+
+// Actualiza la miniatura móvil (phantom-strip) sin re-renderizar todo
+function updateMobileFotoImg() {
+  const img = document.getElementById("mobile-foto-img");
+  if (!img) return;
+  const src = currentFotoPaths[state.fotoView] || currentFotoPaths.seg || currentFotoPaths.cam;
+  if (src) img.src = src;
+}
+
+// Toca la miniatura móvil para alternar entre foto de cámara y segmentación
+function cycleMobileFoto() {
+  const next = state.fotoView === "cam" ? "seg" : "cam";
+  if (currentFotoPaths[next]) setFotoView(next);
 }
 
 // ── SELECCIÓN ─────────────────────────────────────────────
@@ -738,9 +833,11 @@ function renderContent() {
   const COLORS = { SVD: "#00d4ff", JAC: "#ff6b35", GREIT: "#a78bfa", BP: "#34d399" };
 
   let html = `<div class="phantom-strip">
-    ${foto ? `<div class="phantom-foto-main">
-      <div class="phantom-foto-main-label">Phantom</div>
-      <img src="${foto}" loading="lazy"/>
+    ${foto ? `<div class="phantom-foto-main" onclick="cycleMobileFoto()">
+      <div class="phantom-foto-main-label">Phantom (tap)</div>
+      <img id="mobile-foto-img" src="${currentFotoPaths.cam || currentFotoPaths.seg}"
+        onerror="this.onerror=null; if('${currentFotoPaths.seg}') this.src='${currentFotoPaths.seg}'; else this.style.display='none'"
+        loading="lazy"/>
     </div>` : ""}
     <div class="phantom-info">
       <div style="margin-bottom:8px">
