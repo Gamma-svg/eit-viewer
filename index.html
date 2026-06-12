@@ -681,16 +681,20 @@ function updateSidebarFoto(foto) {
   const img     = document.getElementById("sidebar-foto-img");
   const tabsEl  = document.getElementById("foto-tabs");
 
-  if (foto && window.innerWidth > 700) {
+  if (foto) {
     currentFotoPaths = {
       seg: foto,                                       // eit_reference.png (segmentación)
       cam: foto.replace(/eit_reference\.png$/, "recorte.png"), // foto de cámara
     };
+  } else {
+    currentFotoPaths = { cam: null, seg: null };
+  }
+
+  if (foto && window.innerWidth > 700) {
     wrapper.style.display = "block";
     renderFotoTabs(tabsEl);
     setFotoImg(img);
   } else {
-    currentFotoPaths = { cam: null, seg: null };
     wrapper.style.display = "none";
   }
 }
@@ -836,7 +840,8 @@ function renderContent() {
     ${foto ? `<div class="phantom-foto-main" onclick="cycleMobileFoto()">
       <div class="phantom-foto-main-label">Phantom (tap)</div>
       <img id="mobile-foto-img" src="${currentFotoPaths.cam || currentFotoPaths.seg}"
-        onerror="this.onerror=null; if('${currentFotoPaths.seg}') this.src='${currentFotoPaths.seg}'; else this.style.display='none'"
+        data-seg="${currentFotoPaths.seg || ''}"
+        onerror="if(this.dataset.seg && this.src.indexOf('recorte.png')!==-1){this.onerror=null;this.src=this.dataset.seg;}else{this.onerror=null;this.parentElement.style.display='none';}"
         loading="lazy"/>
     </div>` : ""}
     <div class="phantom-info">
